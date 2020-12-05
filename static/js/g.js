@@ -115,7 +115,7 @@ const g = {
 				for (var vi = voxel_data.XYZI.length; vi--;)
 				{
 					const set = voxel_data.XYZI[vi];
-					cells[set.x][set.z][set.y] = set.c;
+					cells[set.x][set.z][set.y] = set.c - 1;
 				}
 
 				if (voxel_data.RGBA && typeof(voxel_data.RGBA[0]) == 'object')
@@ -236,20 +236,41 @@ const g = {
 						// palette: palette
 					};
 					
-					for (var x = 0; x < vox_data.SIZE.x; x++)
-					for (var y = 0; y < vox_data.SIZE.y; y++)
-					for (var z = 0; z < vox_data.SIZE.z; z++)
+					for (var ds_x = 0; ds_x < vox_data.SIZE.x; ds_x++)
+					for (var ds_y = 0; ds_y < vox_data.SIZE.y; ds_y++)
+					for (var ds_z = 0; ds_z < vox_data.SIZE.z; ds_z++)
 					{
-						const color_idx = cells[x * factor][y * factor][z * factor];
-						if (color_idx)
+
+						// find the mode of this downsampled block
+						var hist = {};
+						for (var x = ds_x * factor; x < (ds_x + 1) * factor; x++)
+						for (var y = ds_y * factor; y < (ds_y + 1) * factor; y++)
+						for (var z = ds_z * factor; z < (ds_z + 1) * factor; z++)
+						{
+							const id = cells[x][y][z];
+							hist[id] = hist[id] + 1 || 1;
+						}
+
+						var mode = 0;
+						var max_occurances = 0;
+						for (var key in hist)
+						{
+							if (hist[key] > max_occurances)
+							{
+								mode = parseInt(key);
+								max_occurances = hist[mode];
+							}
+						}
+
+						if (mode)
 						vox_data.XYZI.push({
-							x: x, 
-							y: y, 
-							z: z, 
-							c: color_idx
+							x: ds_x, 
+							y: ds_z, 
+							z: ds_y, 
+							c: mode + 1
 						});
 					}
-					
+					console.log(vox_data);
 					return g.voxel.create(vox_data);
 				}
 			};

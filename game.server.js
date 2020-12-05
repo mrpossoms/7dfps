@@ -1,41 +1,8 @@
 const g = require('./static/js/g.js');
+const _7d = require('./static/js/7dfps.js');
 const fs = require('fs');
 var color_mapping = null;
-
-/**
- *
- */
-function grid(voxel)
-{
-	// find a spawn point to start at
-	var spawn_point = [0, 0, 0];
-	voxel.each_voxel((x, y, z) => {
-		const color = voxel.palette[voxel.cells[x][y][z]];
-		if (color_mapping.spawn_point_red.eq(color))
-		{
-			spawn_point = [x, y, z];
-			return true; // marks that we are done
-		}
-	});
-
-	var nav_grid = voxel.downsample(10);
-
-	let flood_fill = (x, y, z) => {
-		if (x < 0 || x >= nav_grid.width) { return; }
-		if (y < 0 || y >= nav_grid.height) { return; }
-		if (z < 0 || z >= nav_grid.depth) { return; }
-		if (nav_grid.cells[x][y][z] != 0) { return; }
-
-		nav_grid.cells[x][y][z] = -1;
-
-		flood_fill(x - 1, y, z);
-		flood_fill(x + 1, y, z);
-		flood_fill(x, y, z + 1);
-		flood_fill(x, y, z - 1);
-	};
-
-	flood_fill(spawn_point[0], spawn_point[1], spawn_point[2]);
-}
+const level_str = './static/voxels/level.json';
 
 module.exports.server = {
 
@@ -65,7 +32,7 @@ module.exports.server = {
 		}
 
 		{ // load level
-			const path = './static/voxels/temple.json';
+			const path = level_str;
 			const text = fs.readFileSync(path);
 			console.log(crypto.createHmac('sha256', '1234').update(text).digest('hex'));
 
@@ -80,7 +47,8 @@ module.exports.server = {
 			}			
 		}
 
-		state.nav_grid = grid(state.world);
+		state.nav_grid = _7d.grid(color_mapping, state.world);
+		state.world = state.nav_grid;
 		console.log(state.nav_grid);
 
 		console.log('Server initialized');
@@ -100,7 +68,7 @@ module.exports.server = {
 
 			player.cam = g.camera.fps({ collides: cam_colision_check });
 			player.cam.position([0, 20, 0]);
-			player.cam.forces.push([0, -9, 0]);
+			// player.cam.forces.push([0, -9, 0]);
 			player.cam.force = 20;
 			player.cam.friction = 5;
 			player.walk_dir = [0, 0];

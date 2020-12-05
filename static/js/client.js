@@ -1,6 +1,7 @@
 
+const level_str = 'voxel/level'
 const cam_colision_check = (new_pos, new_vel) => {
-    const vox = g.web.assets['voxel/temple'];
+    const vox = g.web.assets[level_str];
     return vox.intersection(new_pos.add(vox.center_of_mass()), new_vel);
 }
 
@@ -12,7 +13,7 @@ var cam = g.camera.fps({
 });
 
 cam.position([0, 20, 0]);
-cam.forces.push([0, -9, 0]);
+// cam.forces.push([0, -9, 0]);
 cam.force = 20;
 cam.friction = 5;
 
@@ -55,6 +56,15 @@ g.initialize(function ()
         text_demo = g.web.gfx.text.create(128, 32, "32px Arial").text("hello, world");
 
         g.is_running = true;
+
+        const nav = grid({
+            "spawn_point_red": [255, 0, 0],
+            "spawn_point_blue": [0, 0, 255]
+        },
+        72,
+        g.web.assets[level_str]);
+
+        g.web.assets[level_str] = g.web.gfx.voxel.create(nav);
     });
 
     light.orthographic();
@@ -132,7 +142,7 @@ var t = 0;
 
 const draw_scene = (camera, shader) => {
 
-    g.web.assets['voxel/temple'].using_shader(shader || 'basic_colored')
+    g.web.assets[level_str].using_shader(shader || 'basic_colored')
         .with_attribute({name:'a_position', buffer: 'positions', components: 3})
         .with_attribute({name:'a_normal', buffer: 'normals', components: 3})
         .with_attribute({name:'a_color', buffer: 'colors', components: 3})
@@ -145,19 +155,11 @@ const draw_scene = (camera, shader) => {
         .set_uniform('u_light_ambient').vec3([135/255, 206/255, 235/255].mul(0.1))
         .draw_tris();
 
-    g.web.assets['voxel/temple'].using_shader('depth_only')
-        .with_attribute({name:'a_position', buffer: 'positions', components: 3})
-        .with_camera(camera)
-        .set_uniform('u_model').mat4([].I(4))
-        .draw_lines();
-
-    g.web.assets['mesh/exported-cube'].using_shader(shader || 'basic_textured')
-        .with_attribute({name:'a_position', buffer: 'positions', components: 3})
-        .with_attribute({name:'a_tex_coord', buffer: 'texture_coords', components: 2})
-        .with_camera(camera)
-        .set_uniform('u_model').mat4([].translate(camera.position().add([3, 1, 0])))
-        .set_uniform('u_texture').texture(text_demo)
-        .draw_tris();
+    // g.web.assets[level_str].using_shader('depth_only')
+    //     .with_attribute({name:'a_position', buffer: 'positions', components: 3})
+    //     .with_camera(camera)
+    //     .set_uniform('u_model').mat4([].I(4))
+    //     .draw_lines();
 
     for (var id in state.players)
     {
