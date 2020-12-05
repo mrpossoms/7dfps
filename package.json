@@ -1,0 +1,32 @@
+{
+  "name": "g.js",
+  "version": "1.0.0",
+  "description": "Webgame template",
+  "main": "server.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node server.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mrpossoms/g.js.git"
+  },
+  "keywords": [
+    "Game",
+    "Template",
+    "webgl"
+  ],
+  "author": "Kirk Roerig",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/mrpossoms/g.js/issues"
+  },
+  "homepage": "https://github.com/mrpossoms/g.js#readme",
+  "dependencies": {
+    "express": "^4.17.1",
+    "express-handlebars": "^5.2.0",
+    "ndb": "^1.1.5",
+    "parse-magica-voxel": "^2.0.0",
+    "socket.io": "^2.2.0"
+  }
+}
