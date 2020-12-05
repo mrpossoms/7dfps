@@ -1,7 +1,7 @@
 const g = require('./static/js/g.js');
 const _7d = require('./static/js/7dfps.js');
 const fs = require('fs');
-var color_mapping = null;
+var vars = null;
 const level_str = './static/voxels/level.json';
 
 module.exports.server = {
@@ -17,26 +17,23 @@ module.exports.server = {
 	// server initialization goes here
 	setup: function(state)
 	{
-		const crypto = require('crypto');
-
 		{ // load color mapping
-			try 
+			try
 			{
-				const text = fs.readFileSync('./colors.json');
-				color_mapping = JSON.parse(text);
+				const text = fs.readFileSync('./vars.json');
+				vars = JSON.parse(text);
 			}
 			catch(e)
 			{
-				console.log('loading voxels failed: ' + e);
-			}					
+				console.log('game variables failed: ' + e);
+			}
 		}
 
 		{ // load level
 			const path = level_str;
 			const text = fs.readFileSync(path);
-			console.log(crypto.createHmac('sha256', '1234').update(text).digest('hex'));
 
-			try 
+			try
 			{
 				const json = JSON.parse(text);
 				state.world = g.voxel.create(json);
@@ -44,12 +41,11 @@ module.exports.server = {
 			catch(e)
 			{
 				console.log('loading voxels failed: ' + e);
-			}			
+			}
 		}
 
-		state.nav_grid = _7d.grid(color_mapping, state.world);
+		state.nav_grid = _7d.grid(vars.colors, -1, state.world);
 		state.world = state.nav_grid;
-		console.log(state.nav_grid);
 
 		console.log('Server initialized');
 	},
@@ -61,46 +57,42 @@ module.exports.server = {
 		{
 			console.log('player: ' + player.id + ' connected');
 
-			const cam_colision_check = (new_pos, new_vel) => {
-				const vox = state.world;
-				return vox.intersection(new_pos.add(vox.center_of_mass()), new_vel);
-			};
-
-			player.cam = g.camera.fps({ collides: cam_colision_check });
-			player.cam.position([0, 20, 0]);
-			// player.cam.forces.push([0, -9, 0]);
-			player.cam.force = 20;
-			player.cam.friction = 5;
+			// player.cam = g.camera.fps({ collides: cam_colision_check });
+			// player.cam.position([0, 20, 0]);
+			// player.cam.force = 20;
+			// player.cam.friction = 5;
+			player.team = 'spectator';
 			player.walk_dir = [0, 0];
 
 			player.emit('id', player.id);
+			player.emit('team', player.team);
 
-			player.on('walk', (walk_dir) => {
-				player.walk_dir = walk_dir;
-			});
+			// player.on('walk', (walk_dir) => {
+			// 	player.walk_dir = walk_dir;
+			// });
 
-			player.on('angles', (pitch_yaw) => {
-				player.cam.pitch(pitch_yaw[0]);
-				player.cam.yaw(pitch_yaw[1]);
-			});
+			// player.on('angles', (pitch_yaw) => {
+			// 	player.cam.pitch(pitch_yaw[0]);
+			// 	player.cam.yaw(pitch_yaw[1]);
+			// });
 
-			player.on('jump', () => {
-				if (!player.cam.is_airborn())
-				{
-					player.cam.velocity(player.cam.velocity().add([0, 6, 0]));
-				}
-			});
+			// player.on('jump', () => {
+			// 	if (!player.cam.is_airborn())
+			// 	{
+			// 		player.cam.velocity(player.cam.velocity().add([0, 6, 0]));
+			// 	}
+			// });
 		},
 
 		update: function(player, dt)
 		{
-			if (player.walk_dir[0] > 0)      { player.cam.walk.right(dt); }
-			else if (player.walk_dir[0] < 0) { player.cam.walk.left(dt); }
+			// if (player.walk_dir[0] > 0)      { player.cam.walk.right(dt); }
+			// else if (player.walk_dir[0] < 0) { player.cam.walk.left(dt); }
 
-			if (player.walk_dir[1] > 0)      { player.cam.walk.forward(dt); }
-			else if (player.walk_dir[1] < 0) { player.cam.walk.backward(dt); }
+			// if (player.walk_dir[1] > 0)      { player.cam.walk.forward(dt); }
+			// else if (player.walk_dir[1] < 0) { player.cam.walk.backward(dt); }
 
-			player.cam.update(dt);
+			// player.cam.update(dt);
 		},
 
 		disconnected: function(player)
@@ -123,19 +115,19 @@ module.exports.server = {
 			players: {}
 		};
 
-		for (var id in players)
-		{
-			state.players[id] ={
-				pos: players[id].cam.position(),
-				vel: players[id].cam.velocity(),
-				angs: [players[id].cam.yaw()]
-			};
-		}
+		// for (var id in players)
+		// {
+		// 	state.players[id] ={
+		// 		pos: players[id].cam.position(),
+		// 		vel: players[id].cam.velocity(),
+		// 		angs: [players[id].cam.yaw()]
+		// 	};
+		// }
 
-		for (var id in players)
-		{
-			if (!players[id].emit) { continue; }
-			players[id].emit('state', state);
-		}
+		// for (var id in players)
+		// {
+		// 	if (!players[id].emit) { continue; }
+		// 	players[id].emit('state', state);
+		// }
 	}
 };

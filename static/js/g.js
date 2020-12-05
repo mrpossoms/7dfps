@@ -180,32 +180,35 @@ const g = {
 					dir = dir.mul(1/s);
 					var fp = pos.floor(), cp = pos.ceil();
 
-					const pd = pos.add(dir);
-					const pd_f = pd.floor();
-					const pd_c = pd.ceil();
-
-					if (pd_f[0] < 0 || pd_f[0] >= w) { return false; }
-					if (pd_f[1] < 0 || pd_f[1] >= h) { return false; }
-					if (pd_f[2] < 0 || pd_f[2] >= d) { return false; }
-
-					if (cells[pd_f[0]][pd_f[1]][pd_f[2]] > 0)
+					for (var p = 0; p < 10; p++)
 					{
-						var norm = fp.sub(pd_f);
-						if (norm.dot(norm) > 0) { norm = norm.norm(); }
+						const pd = pos.add(dir.mul(p / 10));
+						const pd_f = pd.floor();
+						const pd_c = pd.ceil();
 
-						var pen = [0, 0, 0];
+						if (pd_f[0] < 0 || pd_f[0] >= w) { return false; }
+						if (pd_f[1] < 0 || pd_f[1] >= h) { return false; }
+						if (pd_f[2] < 0 || pd_f[2] >= d) { return false; }
 
-						for (var i = 0; i < 3; i++)
+						if (cells[pd_f[0]][pd_f[1]][pd_f[2]] > 0)
 						{
-							if (dir[i] >= 0) { pen[i] = pd[i] - pd_f[i]; }
-							else             { pen[i] = pd[i] - pd_c[i]; }
-						}
+							var norm = fp.sub(pd_f);
+							if (norm.dot(norm) > 0) { norm = norm.norm(); }
 
-						return {
-							point: pos,
-							normal: norm,
-							penetration: pen
-						};
+							var pen = [0, 0, 0];
+
+							for (var i = 0; i < 3; i++)
+							{
+								if (dir[i] >= 0) { pen[i] = pd[i] - pd_f[i]; }
+								else             { pen[i] = pd[i] - pd_c[i]; }
+							}
+
+							return {
+								point: pos,
+								normal: norm,
+								penetration: pen
+							};
+						}
 					}
 
 					return false;
@@ -235,7 +238,7 @@ const g = {
 						scale: voxel_data.scale * factor
 						// palette: palette
 					};
-					
+
 					for (var ds_x = 0; ds_x < vox_data.SIZE.x; ds_x++)
 					for (var ds_y = 0; ds_y < vox_data.SIZE.y; ds_y++)
 					for (var ds_z = 0; ds_z < vox_data.SIZE.z; ds_z++)
@@ -264,13 +267,13 @@ const g = {
 
 						if (mode)
 						vox_data.XYZI.push({
-							x: ds_x, 
-							y: ds_z, 
-							z: ds_y, 
+							x: ds_x,
+							y: ds_z,
+							z: ds_y,
 							c: mode + 1
 						});
 					}
-					console.log(vox_data);
+
 					return g.voxel.create(vox_data);
 				}
 			};
@@ -509,16 +512,24 @@ const g = {
 			}
 
 			cam.update = (dt)=> {
-				var net_force = [0, 0, 0];
+				var new_vel = [0, 0, 0];
 
-				for (var i = 0; i < cam.forces.length; i++)
+				if (opts.dynamics)
 				{
-					net_force = net_force.add(cam.forces[i]);
+					new_vel = opts.dynamics(cam, dt);
 				}
+				else
+				{ // default dynamics
+					var net_force = [0, 0, 0];
 
-				const net_accel = net_force.mul(dt / cam.mass);
-				var new_vel = velocity.add(net_accel);
-				const new_pos = cam.position().add(new_vel.mul(dt));
+					for (var i = 0; i < cam.forces.length; i++)
+					{
+						net_force = net_force.add(cam.forces[i]);
+					}
+
+					const net_accel = net_force.mul(dt / cam.mass);
+					var new_vel = velocity.add(net_accel);
+				}
 
 				last_collisions = [];
 
@@ -527,11 +538,12 @@ const g = {
 				for (var j = coll_dirs.length; j--;)
 				{
 					var dir = coll_dirs[j];
-					// var dot = dir.dot(new_vel.mul(dt));
-					// if (dot > 1)
-					// {
-					// 	dir = dir.add(new_vel.mul(dt));
-					// }
+
+					const new_vel_dt = new_vel.mul(dt);
+					if (dir.dot(new_vel_dt) > 0)
+					{
+						dir = dir.add(new_vel_dt);
+					}
 
 					const collision = opts.collides(
 						coll_offsets[i].add(cam.position()),

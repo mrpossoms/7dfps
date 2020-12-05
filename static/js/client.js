@@ -1,21 +1,31 @@
 
-const level_str = 'voxel/level'
+var level_str = 'voxel/level';
+
 const cam_colision_check = (new_pos, new_vel) => {
     const vox = g.web.assets[level_str];
     return vox.intersection(new_pos.add(vox.center_of_mass()), new_vel);
-}
+};
 
-var state = {};
+var state = {
+    me: {
+        team: 'spectator',
+        cam:g.camera.fps({
+            collides: cam_colision_check,
+            dynamics: function(cam, dt)
+            {
+                return cam.velocity().mul(0.9);
+            }
+        })
+    }
+};
 var my_id = null;
 
-var cam = g.camera.fps({
-    collides: cam_colision_check
-});
 
-cam.position([0, 20, 0]);
+state.me.cam.position([0, 20, 0]);
 // cam.forces.push([0, -9, 0]);
-cam.force = 20;
-cam.friction = 5;
+state.me.cam.mass = 0.1;
+state.me.cam.force = 100;
+// cam.friction = 5;
 
 var shadow_map = null;
 var text_demo = null;
@@ -57,14 +67,13 @@ g.initialize(function ()
 
         g.is_running = true;
 
-        const nav = grid({
-            "spawn_point_red": [255, 0, 0],
-            "spawn_point_blue": [0, 0, 255]
-        },
-        72,
-        g.web.assets[level_str]);
-
-        g.web.assets[level_str] = g.web.gfx.voxel.create(nav);
+        // const nav = grid({
+        //     "spawn_point_red": [255, 0, 0],
+        //     "spawn_point_blue": [0, 0, 255]
+        // },
+        // 72,
+        // g.web.assets[level_str]);
+        // g.web.assets[level_str] = g.web.gfx.voxel.create(nav);
     });
 
     light.orthographic();
@@ -75,6 +84,7 @@ g.initialize(function ()
 
 g.web.pointer.on_move(function (event)
 {
+    let cam = state.me.cam;
     cam.tilt(event.movementY / 100, event.movementX / 100);
 
     g.web.signal('angles', [cam.pitch(), cam.yaw()]);
@@ -90,12 +100,16 @@ g.web.on('id').do((id) => {
     my_id = id;
 });
 
+g.web.on('team').do((type_str) => {
+    state.me.team = type_str;
+});
+
 
 g.web.on('state').do((s) => {
     state = s;
 
-    cam.position(s.players[my_id].pos);
-    cam.velocity(s.players[my_id].vel);
+    state.me.cam.position(s.players[my_id].pos);
+    state.me.cam.velocity(s.players[my_id].vel);
 });
 
 
@@ -103,11 +117,7 @@ g.update(function (dt)
 {
     var vec = [0, 0];
 
-    const forward = cam.forward();
-    const up = cam.up();
-    const left = cam.left();
-
-    cam.update(dt);
+    state.me.cam.update(dt);
 
     step_cool -= dt;
 
@@ -118,21 +128,31 @@ g.update(function (dt)
 
     if (vec.dot(vec) > 0.00001)
     {
-        if (step_cool <= 0)
+        switch (state.me.team)
         {
-            walk_sounds.pick().position(cam.position()).play();
-            step_cool = 0.1;
-        }
-    }
+            case 'spectator':
+                if (vec[0] != 0) { state.me.cam.walk.right(dt * vec[0]); }
+                if (vec[1] != 0) { state.me.cam.walk.forward(dt * vec[1]); }
+                break;
+            default:
+            {
+                if (step_cool <= 0)
+                {
+                    walk_sounds.pick().position(state.me.cam.position()).play();
+                    step_cool = 0.1;
+                }
 
-    if (!vec.eq(walk_action))
-    {
-        g.web.signal('walk', vec);
-        walk_action = vec;
-    }
-    if (g.web.key.is_pressed(' ') && !cam.is_airborn())
-    {
-        g.web.signal('jump');
+                if (!vec.eq(walk_action))
+                {
+                    g.web.signal('walk', vec);
+                    walk_action = vec;
+                }
+                if (g.web.key.is_pressed(' ') && !state.me.cam.is_airborn())
+                {
+                    g.web.signal('jump');
+                }
+            } break;
+        }
     }
 });
 
@@ -190,7 +210,7 @@ g.web.draw(function (dt)
     if (g.is_running == false) { return; }
 
 
-    light.look_at([Math.sin(t * 0.1) * 20, 52, Math.cos(t * 0.1) * 20], [0, 0, 0], [0, 1, 0]);
+    light.look_at([Math.sin(t * 0.1) * 20, 300, Math.cos(t * 0.1) * 20], [0, 0, 0], [0, 1, 0]);
     shadow_map.bind_as_target();
     gl.clear(gl.DEPTH_BUFFER_BIT);
     draw_scene(light.perspective(Math.PI / 4), 'depth_only');
@@ -198,6 +218,6 @@ g.web.draw(function (dt)
 
     gl.clearColor(135/255, 206/255, 235/255, 0);
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-    draw_scene(cam.perspective(Math.PI / 2));
+    draw_scene(state.me.cam.perspective(Math.PI / 2));
 });
 

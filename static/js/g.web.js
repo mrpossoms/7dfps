@@ -1012,7 +1012,6 @@ g.web = {
 						on_finish();
 					});
 				}
-				console.log('tick');
 			}, 10);
 
 			// Promise.all(promises).then(function(values)
