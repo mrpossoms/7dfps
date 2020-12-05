@@ -86,6 +86,7 @@ const g = {
 			// process data into uniform type here.
 			var palette = null;
 			var locations = [];
+			const RGBA = voxel_data.RGBA.slice();
 
 			// grab the palette if it exists
 			if (voxel_data.palette)
@@ -114,12 +115,10 @@ const g = {
 				for (var vi = voxel_data.XYZI.length; vi--;)
 				{
 					const set = voxel_data.XYZI[vi];
-					const col = voxel_data.RGBA[set.c];
-
 					cells[set.x][set.z][set.y] = set.c;
 				}
 
-				if (typeof(voxel_data.RGBA[0]) == 'object')
+				if (voxel_data.RGBA && typeof(voxel_data.RGBA[0]) == 'object')
 				{
 					palette = voxel_data.RGBA;
 					for (var pi = palette.length; pi--;)
@@ -210,8 +209,50 @@ const g = {
 					}
 
 					return false;
+				},
+				each_voxel: function(cb)
+				{
+					for (var x = 0; x < w; x++)
+					for (var y = 0; y < h; y++)
+					for (var z = 0; z < d; z++)
+					{
+						if (cells[x][y][z])
+						{
+							if (cb(x, y, z)) { return; }
+						}
+					}
+				},
+				downsample: function(factor)
+				{
+					var vox_data = {
+						SIZE: {
+							x: w / factor,
+							y: h / factor,
+							z: d / factor,
+						},
+						XYZI: [],
+						RGBA: RGBA,
+						scale: voxel_data.scale * factor
+						// palette: palette
+					};
+					
+					for (var x = 0; x < vox_data.SIZE.x; x++)
+					for (var y = 0; y < vox_data.SIZE.y; y++)
+					for (var z = 0; z < vox_data.SIZE.z; z++)
+					{
+						const color_idx = cells[x * factor][y * factor][z * factor];
+						if (color_idx)
+						vox_data.XYZI.push({
+							x: x, 
+							y: y, 
+							z: z, 
+							c: color_idx
+						});
+					}
+					
+					return g.voxel.create(vox_data);
 				}
-			};;
+			};
 		}
 	},
 

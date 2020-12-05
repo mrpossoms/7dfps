@@ -1,5 +1,41 @@
 const g = require('./static/js/g.js');
 const fs = require('fs');
+var color_mapping = null;
+
+/**
+ *
+ */
+function grid(voxel)
+{
+	// find a spawn point to start at
+	var spawn_point = [0, 0, 0];
+	voxel.each_voxel((x, y, z) => {
+		const color = voxel.palette[voxel.cells[x][y][z]];
+		if (color_mapping.spawn_point_red.eq(color))
+		{
+			spawn_point = [x, y, z];
+			return true; // marks that we are done
+		}
+	});
+
+	var nav_grid = voxel.downsample(10);
+
+	let flood_fill = (x, y, z) => {
+		if (x < 0 || x >= nav_grid.width) { return; }
+		if (y < 0 || y >= nav_grid.height) { return; }
+		if (z < 0 || z >= nav_grid.depth) { return; }
+		if (nav_grid.cells[x][y][z] != 0) { return; }
+
+		nav_grid.cells[x][y][z] = -1;
+
+		flood_fill(x - 1, y, z);
+		flood_fill(x + 1, y, z);
+		flood_fill(x, y, z + 1);
+		flood_fill(x, y, z - 1);
+	};
+
+	flood_fill(spawn_point[0], spawn_point[1], spawn_point[2]);
+}
 
 module.exports.server = {
 
@@ -15,20 +51,38 @@ module.exports.server = {
 	setup: function(state)
 	{
 		const crypto = require('crypto');
-		const path = './static/voxels/temple.json';
 
-		const text = fs.readFileSync(path);
-		console.log(crypto.createHmac('sha256', '1234').update(text).digest('hex'));
+		{ // load color mapping
+			try 
+			{
+				const text = fs.readFileSync('./colors.json');
+				color_mapping = JSON.parse(text);
+			}
+			catch(e)
+			{
+				console.log('loading voxels failed: ' + e);
+			}					
+		}
 
-		try 
-		{
-			const json = JSON.parse(text);
-			state.world = g.voxel.create(json);
+		{ // load level
+			const path = './static/voxels/temple.json';
+			const text = fs.readFileSync(path);
+			console.log(crypto.createHmac('sha256', '1234').update(text).digest('hex'));
+
+			try 
+			{
+				const json = JSON.parse(text);
+				state.world = g.voxel.create(json);
+			}
+			catch(e)
+			{
+				console.log('loading voxels failed: ' + e);
+			}			
 		}
-		catch(e)
-		{
-			console.log('loading voxels failed: ' + e);
-		}
+
+		state.nav_grid = grid(state.world);
+		console.log(state.nav_grid);
+
 		console.log('Server initialized');
 	},
 
