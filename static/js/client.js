@@ -1,5 +1,5 @@
 
-var level_str = 'voxel/level';
+var level_str = 'voxel/level.spawners';
 
 const cam_colision_check = (new_pos, new_vel) => {
     const vox = g.web.assets[level_str];
@@ -16,7 +16,8 @@ var state = {
                 return cam.velocity().mul(0.9);
             }
         })
-    }
+    },
+    rx_state: null,
 };
 var my_id = null;
 
@@ -24,7 +25,7 @@ var my_id = null;
 state.me.cam.position([0, 20, 0]);
 // cam.forces.push([0, -9, 0]);
 state.me.cam.mass = 0.1;
-state.me.cam.force = 100;
+state.me.cam.force = 1000;
 // cam.friction = 5;
 
 var shadow_map = null;
@@ -36,9 +37,77 @@ var step_cool = 0;
 
 g.web.canvas(document.getElementById('primary'));
 
+function grid(color_mapping, nav_cell_idx, voxel)
+{
+    // find a spawn point to start at
+    var spawn_point = [0, 0, 0];
+    var spawn_color_red = color_mapping.spawn_point_red.mul(1/255);
+    var spawn_color_blue = color_mapping.spawn_point_blue.mul(1/255);   
+    voxel.each_voxel((x, y, z) => {
+        const color = voxel.palette[voxel.cells[x][y][z]];
+        if (spawn_color_red.eq(color) || spawn_color_blue.eq(color))
+        {
+            spawn_point = [x, y, z];
+            return true; // marks that we are done
+        }
+    });
+
+    var nav_grid = voxel.downsample(10);
+
+    console.log(nav_grid);
+
+    let flood_fill = (x, y, z) => {
+        if (x < 0 || x >= nav_grid.width) { return; }
+        if (y < 0 || y >= nav_grid.height) { return; }
+        if (z < 0 || z >= nav_grid.depth) { return; }
+        var below = 0;
+        if (y - 1 >= 0) below = nav_grid.cells[x][y - 1][z];
+        if (nav_grid.cells[x][y][z] != 0 || below == nav_cell_idx || below == 0)
+        { return; }
+
+        nav_grid.cells[x][y][z] = nav_cell_idx;
+
+        flood_fill(x - 1, y, z);
+        flood_fill(x - 1, y + 1, z);
+        flood_fill(x + 1, y, z);
+        flood_fill(x + 1, y + 1, z);
+        flood_fill(x, y, z + 1);
+        flood_fill(x, y + 1, z + 1);
+        flood_fill(x, y, z - 1);
+        flood_fill(x, y + 1, z - 1);
+    };
+
+    spawn_point = spawn_point.mul(1/10).floor();
+    flood_fill(spawn_point[0], spawn_point[1], spawn_point[2]);
+
+    return nav_grid;
+}
+
 g.initialize(function ()
 {
     g.is_running = false;
+
+    // prune out the spawner voxels
+    g.web.assets.processors['spawners'] = function(voxel_json)
+    {
+        for (var vi = 0; vi < voxel_json.XYZI.length; vi++)
+        {
+            const set = voxel_json.XYZI[vi];
+            const color = [ voxel_json.RGBA[set.c-1].r, voxel_json.RGBA[set.c-1].g, voxel_json.RGBA[set.c-1].b ];
+
+            if (color.eq([255, 0, 0]))
+            {
+                voxel_json.XYZI[vi].c = 1;
+            }
+
+            if (color.eq([0, 0, 255]))
+            {
+                voxel_json.XYZI[vi].c = 1;
+            }
+        }
+
+        return voxel_json;
+    };
 
     g.web.assets.load(asset_list,
     function() {
@@ -62,8 +131,7 @@ g.initialize(function ()
             walk_sounds.push(new g.web.assets['sound/step' + (i+1)]([0, 0, 0]));
         }
 
-        shadow_map = g.web.gfx.render_target.create({width: 2048, height: 2048}).shadow_map();
-        text_demo = g.web.gfx.text.create(128, 32, "32px Arial").text("hello, world");
+        shadow_map = g.web.gfx.render_target.create({width: 4096, height: 4096}).shadow_map();
 
         g.is_running = true;
 
@@ -106,10 +174,10 @@ g.web.on('team').do((type_str) => {
 
 
 g.web.on('state').do((s) => {
-    state = s;
+    state.rx_state = s;
 
-    state.me.cam.position(s.players[my_id].pos);
-    state.me.cam.velocity(s.players[my_id].vel);
+    // state.me.cam.position(s.players[my_id].pos);
+    // state.me.cam.velocity(s.players[my_id].vel);
 });
 
 
@@ -151,6 +219,10 @@ g.update(function (dt)
                 {
                     g.web.signal('jump');
                 }
+
+                                if (vec[0] != 0) { state.me.cam.walk.right(dt * vec[0]); }
+                if (vec[1] != 0) { state.me.cam.walk.forward(dt * vec[1]); }
+    
             } break;
         }
     }
@@ -171,8 +243,8 @@ const draw_scene = (camera, shader) => {
         .set_uniform('u_shadow_map').texture(shadow_map.depth_attachment)
         .set_uniform('u_light_view').mat4(light.view())
         .set_uniform('u_light_proj').mat4(light.projection())
-        .set_uniform('u_light_diffuse').vec3([0.5, 0.7, 0.9])
-        .set_uniform('u_light_ambient').vec3([135/255, 206/255, 235/255].mul(0.4))
+        .set_uniform('u_light_diffuse').vec3([0.9, 0.7, 0.5])
+        .set_uniform('u_light_ambient').vec3([255/255, 106/255, 135/255].mul(0.4))
         .draw_tris();
 
     // g.web.assets[level_str].using_shader('depth_only')
@@ -181,26 +253,30 @@ const draw_scene = (camera, shader) => {
     //     .set_uniform('u_model').mat4([].I(4))
     //     .draw_lines();
 
-    for (var id in state.players)
+    for (var team_name in state.rx_state)
     {
-        if ('depth_only' != shader)
-        if (id == my_id) { continue; }
+        let team = state.rx_state[team_name];
+        for (var i = 0; i < team.units.length; i++)
+        {
+            const p = team.units[i];
+            const model = [].quat_rotation([0, 1, 0], 3.1415-p.angs[0]).quat_to_matrix().mat_mul([].translate(p.pos.add([0, 7, 0])));
 
-        const p = state.players[id];
-        const model = [].quat_rotation([0, 1, 0], 3.1415-p.angs[0]).quat_to_matrix().mat_mul([].translate(p.pos.add([0, 0.5, 0])));
+            g.web.assets['voxel/assault/legs/0'].using_shader(shader || 'basic_colored')
+            .with_attribute({name:'a_position', buffer: 'positions', components: 3})
+            .with_attribute({name:'a_normal', buffer: 'normals', components: 3})
+            .with_attribute({name:'a_color', buffer: 'colors', components: 3})
+            .with_camera(camera)
+            .set_uniform('u_model').mat4(model)
+            .set_uniform('u_shadow_map').texture(shadow_map.depth_attachment)
+            .set_uniform('u_light_view').mat4(light.view())
+            .set_uniform('u_light_proj').mat4(light.projection())
+            .set_uniform('u_light_diffuse').vec3([1, 1, 1])
+            .set_uniform('u_light_ambient').vec3([135/255, 206/255, 235/255].mul(0.1))
+            .draw_tris();
+        }
 
-        g.web.assets['voxel/knight'].using_shader(shader || 'basic_colored')
-        .with_attribute({name:'a_position', buffer: 'positions', components: 3})
-        .with_attribute({name:'a_normal', buffer: 'normals', components: 3})
-        .with_attribute({name:'a_color', buffer: 'colors', components: 3})
-        .with_camera(camera)
-        .set_uniform('u_model').mat4(model)
-        .set_uniform('u_shadow_map').texture(shadow_map.depth_attachment)
-        .set_uniform('u_light_view').mat4(light.view())
-        .set_uniform('u_light_proj').mat4(light.projection())
-        .set_uniform('u_light_diffuse').vec3([1, 1, 1])
-        .set_uniform('u_light_ambient').vec3([135/255, 206/255, 235/255].mul(0.1))
-        .draw_tris();
+        // if ('depth_only' != shader)
+        // if (id == my_id) { continue; }
     }
 };
 
@@ -216,7 +292,7 @@ g.web.draw(function (dt)
     draw_scene(light.perspective(Math.PI / 4), 'depth_only');
     shadow_map.unbind_as_target();
 
-    gl.clearColor(135/255, 206/255, 235/255, 0);
+    gl.clearColor(140/255, 49/255, 26/255, 0);
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
     draw_scene(state.me.cam.perspective(Math.PI / 2));
 });

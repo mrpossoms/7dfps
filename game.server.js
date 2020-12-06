@@ -2,7 +2,7 @@ const g = require('./static/js/g.js');
 const _7d = require('./static/js/7dfps.js');
 const fs = require('fs');
 var vars = null;
-const level_str = './static/voxels/level.json';
+const level_str = './static/voxels/level.spawners.json';
 
 module.exports.server = {
 
@@ -11,7 +11,12 @@ module.exports.server = {
 
 
 	// complete game state
-	state: {},
+	state: {
+		nav_grid: null,
+		world: null,
+		teams: null,
+		turn: 0
+	},
 
 
 	// server initialization goes here
@@ -29,14 +34,21 @@ module.exports.server = {
 			}
 		}
 
+		state.teams = {
+			red: _7d.team.create(state, vars),
+			blue: _7d.team.create(state, vars),
+		};
+
+
 		{ // load level
 			const path = level_str;
 			const text = fs.readFileSync(path);
-
+			var world = null;
 			try
 			{
 				const json = JSON.parse(text);
-				state.world = g.voxel.create(json);
+				_7d.spawn_points(state, json);
+				world = g.voxel.create(json);
 			}
 			catch(e)
 			{
@@ -44,8 +56,12 @@ module.exports.server = {
 			}
 		}
 
-		state.nav_grid = _7d.grid(vars.colors, -1, state.world);
-		state.world = state.nav_grid;
+		state.world = world;
+		state.teams.red.spawn_units();
+		state.teams.blue.spawn_units();
+
+		state.nav_grid = _7d.grid(vars.colors, -1, world);
+		state.turn = 0;
 
 		console.log('Server initialized');
 	},
@@ -63,6 +79,26 @@ module.exports.server = {
 			// player.cam.friction = 5;
 			player.team = 'spectator';
 			player.walk_dir = [0, 0];
+
+			let red_team = state.teams.red;
+			let blue_team = state.teams.blue;
+
+			if (red_team.players.length  < 3 || 
+				blue_team.players.length < 3)
+			{
+				if (red_team.players.length <= blue_team.players.length)
+				{
+					console.log('player ' + player.id + " joins red");
+					player.team = 'red';
+					red_team.players.push(player.id);
+				}
+				else
+				{
+					console.log('player ' + player.id + " joins blue");
+					player.team = 'blue';
+					blue_team.players.push(player.id);
+				}	
+			}
 
 			player.emit('id', player.id);
 			player.emit('team', player.team);
@@ -95,8 +131,19 @@ module.exports.server = {
 			// player.cam.update(dt);
 		},
 
-		disconnected: function(player)
+		disconnected: function(player, state)
 		{
+			switch(player.team)
+			{
+				case 'red':
+				case 'blue':
+					// remove the player's id from their team's player list
+					let players = state.teams[player.team].players; 
+					players.splice(players.indexOf(player.id), 1);
+					console.log('player: ' + player.id + ' leaves ' + player.team);
+					break;
+				default: break;
+			}
 			console.log('player: ' + player.id + ' disconnected');
 		}
 	},
@@ -111,9 +158,29 @@ module.exports.server = {
 
 	send_states: function(players, state)
 	{
-		var state = {
-			players: {}
+		var tx_state = {
+			red: {
+				units: []
+			},
+			blue: {
+				units: []
+			}
 		};
+
+		for (var team_name in state.teams)
+		{
+			let team = state.teams[team_name];
+			
+			for (var i = 0; i < team.units.length; i++)
+			{
+				let unit = team.units[i];
+				tx_state[team_name].units.push({
+					type: unit.type, 
+					pos: unit.position(),
+					angs: unit.angles()
+				});
+			}
+		}
 
 		// for (var id in players)
 		// {
@@ -124,10 +191,10 @@ module.exports.server = {
 		// 	};
 		// }
 
-		// for (var id in players)
-		// {
-		// 	if (!players[id].emit) { continue; }
-		// 	players[id].emit('state', state);
-		// }
+		for (var id in players)
+		{
+			if (!players[id].emit) { continue; }
+			players[id].emit('state', tx_state);
+		}
 	}
 };

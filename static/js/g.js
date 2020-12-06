@@ -132,7 +132,7 @@ const g = {
 					width: voxel_data.SIZE.x,
 					height: voxel_data.SIZE.z,
 					depth: voxel_data.SIZE.y,
-					scale: voxel_data.scale,
+					scale: voxel_data.scale || 1,
 					palette: palette,
 					cells: cells
 				};
@@ -230,8 +230,8 @@ const g = {
 					var vox_data = {
 						SIZE: {
 							x: w / factor,
-							y: h / factor,
-							z: d / factor,
+							y: d / factor,
+							z: h / factor,
 						},
 						XYZI: [],
 						RGBA: RGBA,
@@ -240,29 +240,42 @@ const g = {
 					};
 
 					for (var ds_x = 0; ds_x < vox_data.SIZE.x; ds_x++)
-					for (var ds_y = 0; ds_y < vox_data.SIZE.y; ds_y++)
-					for (var ds_z = 0; ds_z < vox_data.SIZE.z; ds_z++)
+					for (var ds_y = 0; ds_y < vox_data.SIZE.z; ds_y++)
+					for (var ds_z = 0; ds_z < vox_data.SIZE.y; ds_z++)
 					{
 
 						// find the mode of this downsampled block
-						var hist = {};
+						var filled = 0;
+						var empty = 0;
+						var last_id = 0;
 						for (var x = ds_x * factor; x < (ds_x + 1) * factor; x++)
 						for (var y = ds_y * factor; y < (ds_y + 1) * factor; y++)
 						for (var z = ds_z * factor; z < (ds_z + 1) * factor; z++)
 						{
 							const id = cells[x][y][z];
-							hist[id] = hist[id] + 1 || 1;
+							if (id <= 0) { empty += 1; }
+							else
+							{
+								filled += 1;
+								last_id = id;
+							}
 						}
 
+						// var mode = 0;
+						// var max_occurances = 0;
+						// for (var key in hist)
+						// {
+						// 	if (hist[key] > max_occurances)
+						// 	{
+						// 		mode = parseInt(key);
+						// 		max_occurances = hist[mode];
+						// 	}
+						// }
+
 						var mode = 0;
-						var max_occurances = 0;
-						for (var key in hist)
+						if (filled > empty / 2)
 						{
-							if (hist[key] > max_occurances)
-							{
-								mode = parseInt(key);
-								max_occurances = hist[mode];
-							}
+							mode = last_id;
 						}
 
 						if (mode)
@@ -769,6 +782,11 @@ Array.prototype.len = function()
 
 	return Math.sqrt(this.dot(this));
 };
+
+Array.prototype.dist = function(v)
+{
+	return this.sub(v).len();
+}
 
 Array.prototype.norm = function()
 {

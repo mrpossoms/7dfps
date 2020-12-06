@@ -8,6 +8,18 @@ uniform sampler2D u_shadow_map;
 
 void main (void)
 {
+	const lowp vec3 emiss_magenta = vec3(255.0, 67.0, 226.0) / 255.0;
+	const lowp vec3 emiss_green = vec3(79.0, 124.0, 16.0) / 255.0;
+	const lowp vec3 emiss_teal = vec3(153.0, 198.0, 255.0) / 255.0;
+
+	if (distance(v_color, emiss_magenta) < 0.001 || 
+		distance(v_color, emiss_green) < 0.001 ||
+		distance(v_color, emiss_teal) < 0.001)
+	{
+		gl_FragColor = vec4(v_color * 1.5, 1.0);
+		return;
+	}
+
 	lowp vec3 normal = normalize(v_normal);
 	lowp vec3 light_dir = normalize(v_light_proj_pos.xyz);
 	//lowp float bias = 0.00001;
