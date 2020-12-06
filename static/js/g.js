@@ -383,7 +383,7 @@ const g = {
 				{
 					const a = g.web.gfx.aspect();
 					near = near || 0.1;
-					far = far || 100;
+					far = far || 500;
 					_proj = [].orthographic(-a, a, -1, 1, near, far);
 
 					return this;

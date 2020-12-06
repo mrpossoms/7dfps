@@ -60,6 +60,13 @@ app.get('/', (req, res) => {
 	res.render('index', { asset_paths: asset_paths });
 });
 
+app.get('/reload', (req, res) => {
+	console.log('collective: ' + asset_paths);
+	// allow game server to initialize game state, etc
+	game.server.setup(game.server.state);
+	res.render('index', { asset_paths: asset_paths });
+});
+
 function new_player_id()
 {
 	var id = null;

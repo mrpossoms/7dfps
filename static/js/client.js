@@ -171,8 +171,8 @@ const draw_scene = (camera, shader) => {
         .set_uniform('u_shadow_map').texture(shadow_map.depth_attachment)
         .set_uniform('u_light_view').mat4(light.view())
         .set_uniform('u_light_proj').mat4(light.projection())
-        .set_uniform('u_light_diffuse').vec3([1, 1, 1])
-        .set_uniform('u_light_ambient').vec3([135/255, 206/255, 235/255].mul(0.1))
+        .set_uniform('u_light_diffuse').vec3([0.5, 0.7, 0.9])
+        .set_uniform('u_light_ambient').vec3([135/255, 206/255, 235/255].mul(0.4))
         .draw_tris();
 
     // g.web.assets[level_str].using_shader('depth_only')
@@ -210,7 +210,7 @@ g.web.draw(function (dt)
     if (g.is_running == false) { return; }
 
 
-    light.look_at([Math.sin(t * 0.1) * 20, 300, Math.cos(t * 0.1) * 20], [0, 0, 0], [0, 1, 0]);
+    light.look_at([20, 100, 0], [0, 0, 0], [0, 1, 0]);
     shadow_map.bind_as_target();
     gl.clear(gl.DEPTH_BUFFER_BIT);
     draw_scene(light.perspective(Math.PI / 4), 'depth_only');
