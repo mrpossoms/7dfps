@@ -286,14 +286,16 @@ g.web.draw(function (dt)
     if (g.is_running == false) { return; }
 
 
-    light.look_at([20, 160, -20], [0, 0, 0], [0, 1, 0]);
+    light.look_at([80, 140, -40], [0, 0, 0], [0, 1, 0]);
     shadow_map.bind_as_target();
     gl.clear(gl.DEPTH_BUFFER_BIT);
-    draw_scene(light.orthographic(), 'depth_only');
+    draw_scene(light.orthographic(180, 180), 'depth_only');
     shadow_map.unbind_as_target();
 
     gl.clearColor(140/255, 49/255, 26/255, 0);
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+
+    // draw_scene(light.orthographic(180, 180));
     draw_scene(state.me.cam.perspective(Math.PI / 2));
 });
 

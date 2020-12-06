@@ -392,12 +392,12 @@ const g = {
 
 					return this;
 				},
-				orthographic: function(near, far)
+				orthographic: function(width, height, near, far)
 				{
 					const a = g.web.gfx.aspect();
 					near = near || 0.1;
 					far = far || 500;
-					_proj = [].orthographic(35, -35, 35, -35, near, far);
+					_proj = [].orthographic(width/2, -width/2, height/2, -height/2, near, far);
 
 					return this;
 				}
