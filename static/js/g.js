@@ -397,7 +397,7 @@ const g = {
 					const a = g.web.gfx.aspect();
 					near = near || 0.1;
 					far = far || 500;
-					_proj = [].orthographic(-a, a, -1, 1, near, far);
+					_proj = [].orthographic(35, -35, 35, -35, near, far);
 
 					return this;
 				}
@@ -1097,11 +1097,18 @@ Array.prototype.orthographic = function(r, l, t, b, n, f)
 	const fmn = f - n;
 	const fpn = f + n;
 
+	// return [
+	//        [  2/rml,         0,          0, -rpl/rml ],
+	//        [      0,     2/tmb,          0, -tpb/tmb ],
+	//        [      0,         0,     -2/fmn, -fpn/fmn ],
+	//        [      0,         0,          0,        1 ]
+	// ];
+
 	return [
-	       [  2/rml,         0,          0, -rpl/rml ],
-	       [      0,     2/tmb,          0, -tpb/tmb ],
-	       [      0,         0,     -2/fmn, -fpn/fmn ],
-	       [      0,         0,          0,        1 ]
+		[2/rml,     0,      0,     0],
+		[    0, 2/tmb,      0,     0],
+		[    0,     0, -2/fmn,     0],
+		[    0,     0,      0,     1],
 	];
 };
 

@@ -286,10 +286,10 @@ g.web.draw(function (dt)
     if (g.is_running == false) { return; }
 
 
-    light.look_at([20, 100, 0], [0, 0, 0], [0, 1, 0]);
+    light.look_at([20, 160, -20], [0, 0, 0], [0, 1, 0]);
     shadow_map.bind_as_target();
     gl.clear(gl.DEPTH_BUFFER_BIT);
-    draw_scene(light.perspective(Math.PI / 4), 'depth_only');
+    draw_scene(light.orthographic(), 'depth_only');
     shadow_map.unbind_as_target();
 
     gl.clearColor(140/255, 49/255, 26/255, 0);
