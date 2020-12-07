@@ -122,7 +122,16 @@ module.exports.server = {
 					int = state.nav_grid.sample(int.point.add([0, 5, 0]));
 					int.point = int.point.add([5, 0, 5]);
 					if (int.cell < 0)
-					player.emit('selected', int);
+					{
+						for (var i = 0; i < player.nav_choices.length; i++)
+						{
+							if(player.nav_choices[i].dist(int.point) < 10)
+							{
+								player.emit('selected', i);
+								break;
+							}
+						}
+					}
 				}
 			});
 
@@ -211,8 +220,8 @@ module.exports.server = {
 			if (!player.emit) { continue; }
 			player.emit('state', tx_state);
 
-			let choices = _7d.nav.choices(state.nav_grid, player.unit.position(), player.unit.action_points());
-			player.emit('nav', choices);
+			player.nav_choices = _7d.nav.choices(state.nav_grid, player.unit.position(), player.unit.action_points());
+			player.emit('nav', player.nav_choices);
 		}
 	}
 };

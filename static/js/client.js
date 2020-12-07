@@ -141,13 +141,13 @@ g.initialize(function ()
 
         g.is_running = true;
 
-        const nav = grid({
-            "spawn_point_red": [255, 0, 0],
-            "spawn_point_blue": [0, 0, 255]
-        },
-        72,
-        g.web.assets[level_str]);
-        g.web.assets[level_str] = g.web.gfx.voxel.create(nav);
+        // const nav = grid({
+        //     "spawn_point_red": [255, 0, 0],
+        //     "spawn_point_blue": [0, 0, 255]
+        // },
+        // 72,
+        // g.web.assets[level_str]);
+        // g.web.assets[level_str] = g.web.gfx.voxel.create(nav);
 
         g.web.assets['mesh/nav_point'] = g.web.gfx.mesh.create({
             positions: [[0, 0, 0]]
@@ -280,11 +280,12 @@ const draw_scene = (camera, shader) => {
 
     for (var i = 0; i < state.me.nav_choices.length; i++)
     {
+        let selected = i == state.me.selected;
         g.web.assets['mesh/nav_point'].using_shader('nav_point')
         .with_attribute({name:'a_position', buffer:'positions', components: 3})
         .with_camera(camera)
         .set_uniform('u_model').mat4([].translate(state.me.nav_choices[i].add([0, -4, 0]).sub(level.center_of_mass())))
-        .set_uniform('u_color').vec4([0, 1, 1, 0.5])
+        .set_uniform('u_color').vec4(selected ? [0, 1, 0, 1] : [0, 1, 1, 0.5])
         .draw_points();
     }
 

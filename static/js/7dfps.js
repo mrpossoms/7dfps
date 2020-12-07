@@ -62,13 +62,15 @@ const nav = {
 			let id = x+':'+y+':'+z;
 
 			if (points < 0) { return; }
-			if (visited[id] > points) { return; }
+			if (visited[id] && visited[id].points > points) { return; }
 			if (nav_grid.cells[x][y][z] >= 0) { return; }
 
-			let point = [x, y, z].add([0.5, 0.5, 0.5]).mul(s);
-			choices.push(point);
+			// let point = [x, y, z]
 
-			visited[id] = points;
+			visited[id] = {
+				points: points,
+				coord: [x, y, z]
+			};
 
 			walk(x,y,z+1, points - 1);
 			walk(x,y,z-1, points - 1);
@@ -78,6 +80,13 @@ const nav = {
 			walk(x,y-1,z, points - 1);
 		};
 		walk(Math.floor(start_point[0] / s), Math.floor(start_point[1] / s), Math.floor(start_point[2] / s), action_points);
+
+		for (var key in visited)
+		{
+			choices.push(
+	        	visited[key].coord.add([0.5, 0.5, 0.5]).mul(s)
+			);
+		}
 
 		return choices;
 	}
