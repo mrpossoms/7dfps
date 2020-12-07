@@ -137,20 +137,20 @@ g.initialize(function ()
             walk_sounds.push(new g.web.assets['sound/step' + (i+1)]([0, 0, 0]));
         }
 
-        shadow_map = g.web.gfx.render_target.create({width: 4096, height: 4096}).shadow_map();
+        shadow_map = g.web.gfx.render_target.create({width: 1024, height: 1024}).shadow_map();
 
         g.is_running = true;
 
-        // const nav = grid({
-        //     "spawn_point_red": [255, 0, 0],
-        //     "spawn_point_blue": [0, 0, 255]
-        // },
-        // 72,
-        // g.web.assets[level_str]);
-        // g.web.assets[level_str] = g.web.gfx.voxel.create(nav);
+        const nav = grid({
+            "spawn_point_red": [255, 0, 0],
+            "spawn_point_blue": [0, 0, 255]
+        },
+        72,
+        g.web.assets[level_str]);
+        g.web.assets[level_str] = g.web.gfx.voxel.create(nav);
+
         g.web.assets['mesh/nav_point'] = g.web.gfx.mesh.create({
-            positions: [[0, 0, 0]],
-            colors: [[0, 1, 0]]
+            positions: [[0, 0, 0]]
         });
     });
 
@@ -196,9 +196,12 @@ g.web.on('state').do((s) => {
 
     state.rx_state = s;
 
-    // TODO: put this back
-    state.me.cam.position(s[my_team].players[my_id].pos.add([5, 12, 5]).sub(level.center_of_mass()));
+    state.me.cam.position(s[my_team].players[my_id].pos.add([0, 12, 0]).sub(level.center_of_mass()));
     state.me.cam.velocity(s[my_team].players[my_id].vel);
+});
+
+g.web.on('selected').do((int) => {
+    state.me.selected = int;
 });
 
 
@@ -279,10 +282,24 @@ const draw_scene = (camera, shader) => {
     {
         g.web.assets['mesh/nav_point'].using_shader('nav_point')
         .with_attribute({name:'a_position', buffer:'positions', components: 3})
-        .with_attribute({name:'a_color', buffer:'colors', components: 3})
         .with_camera(camera)
         .set_uniform('u_model').mat4([].translate(state.me.nav_choices[i].add([0, -4, 0]).sub(level.center_of_mass())))
+        .set_uniform('u_color').vec4([0, 1, 1, 0.5])
         .draw_points();
+    }
+
+    if (state.me.selected)
+    {
+        gl.disable(gl.DEPTH_TEST);
+        if (state.me.selected.point)
+        g.web.assets['mesh/nav_point'].using_shader('nav_point')
+        .with_attribute({name:'a_position', buffer:'positions', components: 3})
+        .with_camera(camera)
+        .set_uniform('u_model').mat4([].translate(state.me.selected.point.add([0, 0, 0]).sub(level.center_of_mass())))
+        .set_uniform('u_color').vec4([0, 1, 0, 1])
+        .draw_points();
+
+        gl.enable(gl.DEPTH_TEST);
     }
 
     for (var team_name in state.rx_state)
@@ -291,7 +308,7 @@ const draw_scene = (camera, shader) => {
         for (var id in team.players)
         {
             const p = team.players[id];
-            const model = [].quat_rotation([0, 1, 0], 3.1415-p.angs[0]).quat_to_matrix().mat_mul([].translate(p.pos.add([5, 7, 5]).sub(level.center_of_mass())));
+            const model = [].quat_rotation([0, 1, 0], 3.1415-p.angs[0]).quat_to_matrix().mat_mul([].translate(p.pos.add([0, 7, 0]).sub(level.center_of_mass())));
 
             g.web.assets['voxel/assault/legs/0'].using_shader(shader || 'basic_colored')
             .with_attribute({name:'a_position', buffer: 'positions', components: 3})

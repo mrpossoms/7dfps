@@ -77,7 +77,7 @@ const nav = {
 			walk(x,y+1,z, points - 1);
 			walk(x,y-1,z, points - 1);
 		};
-		walk(start_point[0] / s, start_point[1] / s, start_point[2] / s, action_points);
+		walk(Math.floor(start_point[0] / s), Math.floor(start_point[1] / s), Math.floor(start_point[2] / s), action_points);
 
 		return choices;
 	}
@@ -150,6 +150,10 @@ let unit = {
 
 				return [cam.yaw(), cam.pitch()];
 			},
+			forward: function()
+			{
+				return cam.forward();
+			},
 			position: function(pos) { return cam.position(pos); },
 			velocity: function(vel) { return cam.velocity(vel); },
 			action_points: function(pts)
@@ -179,7 +183,7 @@ let team = {
 			spawn_points: spawn_points,
 			spawn_player: function(player) {
 				let idx = players.indexOf(player.id);
-				player.unit.reset().position(spawn_points[idx]);
+				player.unit.reset().position(spawn_points[idx].add([5, 0, 5]));
 				console.log('player ' + player.id + ' spawned at ' + spawn_points[idx]);
 			}
 			// spawn_units: function()

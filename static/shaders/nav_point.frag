@@ -1,6 +1,6 @@
-varying lowp vec3 v_color;
+uniform lowp vec4 u_color;
 
 void main (void)
 {
-    gl_FragColor = vec4(v_color, 1.0);
+    gl_FragColor = u_color;
 }

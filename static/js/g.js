@@ -180,9 +180,10 @@ const g = {
 					dir = dir.mul(1/s);
 					var fp = pos.floor(), cp = pos.ceil();
 
-					for (var p = 0; p < 10; p++)
+					let itrs = Math.ceil(dir.len()) * 5;
+					for (var p = 0; p < itrs; p++)
 					{
-						const pd = pos.add(dir.mul(p / 10));
+						const pd = pos.add(dir.mul(p / itrs));
 						const pd_f = pd.floor();
 						const pd_c = pd.ceil();
 
@@ -204,7 +205,7 @@ const g = {
 							}
 
 							return {
-								point: pos,
+								point: pd,
 								normal: norm,
 								penetration: pen
 							};
@@ -212,6 +213,20 @@ const g = {
 					}
 
 					return false;
+				},
+				sample: function(pos)
+				{
+					pos = pos.mul(1/s);
+					var fp = pos.floor();
+
+					if (fp[0] < 0 || fp[0] >= w) { return undefined; }
+					if (fp[1] < 0 || fp[1] >= h) { return undefined; }
+					if (fp[2] < 0 || fp[2] >= d) { return undefined; }
+
+					return {
+						point: fp.mul(s),
+						cell: cells[fp[0]][fp[1]][fp[2]]
+					}
 				},
 				each_voxel: function(cb)
 				{
@@ -260,17 +275,6 @@ const g = {
 								last_id = id;
 							}
 						}
-
-						// var mode = 0;
-						// var max_occurances = 0;
-						// for (var key in hist)
-						// {
-						// 	if (hist[key] > max_occurances)
-						// 	{
-						// 		mode = parseInt(key);
-						// 		max_occurances = hist[mode];
-						// 	}
-						// }
 
 						var mode = 0;
 						if (filled > empty / 2)
@@ -504,12 +508,34 @@ const g = {
 			};
 
 			cam.pitch = (p) => {
-				if (p) { pitch = p; }
+				if (p)
+				{
+					pitch = p;
+
+					const qx = [].quat_rotation([1, 0, 0], pitch);
+					const qy = [].quat_rotation([0, 1, 0], yaw);
+					const q = cam._q = qy.quat_mul(qx)
+
+					// const up = q.quat_rotate_vector([0, 1, 0]);
+					const forward = q.quat_rotate_vector([0, 0, 1]);
+					cam.forward(forward);
+				}
 				return pitch;
 			};
 
 			cam.yaw = (y) => {
-				if (y) { yaw = y; }
+				if (y)
+				{
+					yaw = y;
+
+					const qx = [].quat_rotation([1, 0, 0], pitch);
+					const qy = [].quat_rotation([0, 1, 0], yaw);
+					const q = cam._q = qy.quat_mul(qx)
+
+					// const up = q.quat_rotate_vector([0, 1, 0]);
+					const forward = q.quat_rotate_vector([0, 0, 1]);
+					cam.forward(forward);
+				}
 				return yaw;
 			};
 

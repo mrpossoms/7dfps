@@ -112,6 +112,18 @@ module.exports.server = {
 
 			player.on('angles', (pitch_yaw) => {
 				player.unit.angles(pitch_yaw[1], pitch_yaw[0]);
+				// TODO shoot ray here
+				let eyes = player.unit.position().add([0, 12, 0]);
+				let ray = player.unit.forward().mul(300);
+				let int = state.world.intersection(eyes, ray);
+
+				if (int)
+				{
+					int = state.nav_grid.sample(int.point.add([0, 5, 0]));
+					int.point = int.point.add([5, 0, 5]);
+					if (int.cell < 0)
+					player.emit('selected', int);
+				}
 			});
 
 			// player.on('jump', () => {
