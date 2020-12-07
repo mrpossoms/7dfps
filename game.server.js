@@ -57,8 +57,8 @@ module.exports.server = {
 		}
 
 		state.world = world;
-		state.teams.red.spawn_units();
-		state.teams.blue.spawn_units();
+		// state.teams.red.spawn_units();
+		// state.teams.blue.spawn_units();
 
 		state.nav_grid = _7d.grid(vars.colors, -1, world);
 		state.turn = 0;
@@ -79,11 +79,12 @@ module.exports.server = {
 			// player.cam.friction = 5;
 			player.team = 'spectator';
 			player.walk_dir = [0, 0];
+			player.unit = _7d.unit.create(state, vars);
 
 			let red_team = state.teams.red;
 			let blue_team = state.teams.blue;
 
-			if (red_team.players.length  < 3 || 
+			if (red_team.players.length  < 3 ||
 				blue_team.players.length < 3)
 			{
 				if (red_team.players.length <= blue_team.players.length)
@@ -91,13 +92,15 @@ module.exports.server = {
 					console.log('player ' + player.id + " joins red");
 					player.team = 'red';
 					red_team.players.push(player.id);
+					red_team.spawn_player(player);
 				}
 				else
 				{
 					console.log('player ' + player.id + " joins blue");
 					player.team = 'blue';
 					blue_team.players.push(player.id);
-				}	
+					blue_team.spawn_player(player);
+				}
 			}
 
 			player.emit('id', player.id);
@@ -107,10 +110,9 @@ module.exports.server = {
 			// 	player.walk_dir = walk_dir;
 			// });
 
-			// player.on('angles', (pitch_yaw) => {
-			// 	player.cam.pitch(pitch_yaw[0]);
-			// 	player.cam.yaw(pitch_yaw[1]);
-			// });
+			player.on('angles', (pitch_yaw) => {
+				player.unit.angles(pitch_yaw[1], pitch_yaw[0]);
+			});
 
 			// player.on('jump', () => {
 			// 	if (!player.cam.is_airborn())
@@ -138,7 +140,7 @@ module.exports.server = {
 				case 'red':
 				case 'blue':
 					// remove the player's id from their team's player list
-					let players = state.teams[player.team].players; 
+					let players = state.teams[player.team].players;
 					players.splice(players.indexOf(player.id), 1);
 					console.log('player: ' + player.id + ' leaves ' + player.team);
 					break;
@@ -160,25 +162,25 @@ module.exports.server = {
 	{
 		var tx_state = {
 			red: {
-				units: []
+				players: {}
 			},
 			blue: {
-				units: []
+				players: {}
 			}
 		};
 
 		for (var team_name in state.teams)
 		{
 			let team = state.teams[team_name];
-			
-			for (var i = 0; i < team.units.length; i++)
+
+			for (var i = 0; i < team.players.length; i++)
 			{
-				let unit = team.units[i];
-				tx_state[team_name].units.push({
-					type: unit.type, 
+				let unit = players[team.players[i]].unit;
+				tx_state[team_name].players[team.players[i]] = {
+					type: unit.type,
 					pos: unit.position(),
 					angs: unit.angles()
-				});
+				};
 			}
 		}
 
@@ -193,8 +195,12 @@ module.exports.server = {
 
 		for (var id in players)
 		{
-			if (!players[id].emit) { continue; }
-			players[id].emit('state', tx_state);
+			let player = players[id];
+			if (!player.emit) { continue; }
+			player.emit('state', tx_state);
+
+			let choices = _7d.nav.choices(state.nav_grid, player.unit.position(), player.unit.action_points());
+			player.emit('nav', choices);
 		}
 	}
 };

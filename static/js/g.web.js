@@ -438,6 +438,8 @@ g.web = {
 								{
 									gl.drawArrays(gl.TRIANGLES, 0, mesh_ref.positions.length / 9);
 								}
+
+								return this;
 							},
 							draw_tri_strip: function()
 							{
@@ -455,6 +457,8 @@ g.web = {
 								{
 									gl.drawArrays(gl.TRIANGLE_STRIP, 0, mesh_ref.element_count / 3);
 								}
+
+								return this;
 							},
 							draw_tri_fan: function()
 							{
@@ -472,6 +476,8 @@ g.web = {
 								{
 									gl.drawArrays(gl.TRIANGLE_FAN, 0, mesh_ref.element_count);
 								}
+
+								return this;
 							},
 							draw_lines: function()
 							{
@@ -487,8 +493,10 @@ g.web = {
 								}
 								else
 								{
-									gl.drawArrays(gl.LINES, 0, mesh_ref.element_count / 3);
+									gl.drawArrays(gl.LINES, 0, mesh_ref.element_count);
 								}
+
+								return this;
 							},
 							draw_points: function()
 							{
@@ -504,8 +512,10 @@ g.web = {
 								}
 								else
 								{
-									gl.drawArrays(gl.POINTS, 0, mesh_ref.element_count / 3);
+									gl.drawArrays(gl.POINTS, 0, mesh_ref.element_count);
 								}
+
+								return this;
 							}
 						};
 					},

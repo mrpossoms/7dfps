@@ -25,4 +25,6 @@ void main (void)
 	v_light_proj_pos = u_light_proj * u_light_view * v_world_pos;
 	v_light_proj_pos /= v_light_proj_pos.w;
 	v_light_proj_pos = (v_light_proj_pos + 1.0) / 2.0;
+
+    gl_PointSize = 2.0;
 }

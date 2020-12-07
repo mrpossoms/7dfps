@@ -20,6 +20,7 @@ var state = {
     rx_state: null,
 };
 var my_id = null;
+var my_team = null;
 
 
 state.me.cam.position([0, 20, 0]);
@@ -42,7 +43,7 @@ function grid(color_mapping, nav_cell_idx, voxel)
     // find a spawn point to start at
     var spawn_point = [0, 0, 0];
     var spawn_color_red = color_mapping.spawn_point_red.mul(1/255);
-    var spawn_color_blue = color_mapping.spawn_point_blue.mul(1/255);   
+    var spawn_color_blue = color_mapping.spawn_point_blue.mul(1/255);
     voxel.each_voxel((x, y, z) => {
         const color = voxel.palette[voxel.cells[x][y][z]];
         if (spawn_color_red.eq(color) || spawn_color_blue.eq(color))
@@ -126,6 +127,11 @@ g.initialize(function ()
             g.web.assets['shaders/depth_only.frag']
         );
 
+        g.web.gfx.shader.create('nav_point',
+            g.web.assets['shaders/nav_point.vert'],
+            g.web.assets['shaders/nav_point.frag']
+        );
+
         for (var i = 0; i < 4; i++)
         {
             walk_sounds.push(new g.web.assets['sound/step' + (i+1)]([0, 0, 0]));
@@ -142,6 +148,10 @@ g.initialize(function ()
         // 72,
         // g.web.assets[level_str]);
         // g.web.assets[level_str] = g.web.gfx.voxel.create(nav);
+        g.web.assets['mesh/nav_point'] = g.web.gfx.mesh.create({
+            positions: [[0, 0, 0]],
+            colors: [[0, 1, 0]]
+        });
     });
 
     light.orthographic();
@@ -166,18 +176,29 @@ g.web.pointer.on_press((event) => {
 
 g.web.on('id').do((id) => {
     my_id = id;
+    console.log('you are player ' + id);
 });
 
 g.web.on('team').do((type_str) => {
     state.me.team = type_str;
+    my_team = type_str;
+    console.log('you have joined ' + type_str);
 });
 
+g.web.on('nav').do((nav_choices) => {
+    state.me.nav_choices = nav_choices;
+});
 
 g.web.on('state').do((s) => {
+    let level = g.web.assets[level_str];
+
+    if (!level) { return; }
+
     state.rx_state = s;
 
-    // state.me.cam.position(s.players[my_id].pos);
-    // state.me.cam.velocity(s.players[my_id].vel);
+    // TODO: put this back
+    state.me.cam.position(s[my_team].players[my_id].pos.add([5, 12, 5]).sub(level.center_of_mass()));
+    state.me.cam.velocity(s[my_team].players[my_id].vel);
 });
 
 
@@ -206,7 +227,7 @@ g.update(function (dt)
             {
                 if (step_cool <= 0)
                 {
-                    walk_sounds.pick().position(state.me.cam.position()).play();
+                    // walk_sounds.pick().position(state.me.cam.position()).play();
                     step_cool = 0.1;
                 }
 
@@ -222,7 +243,7 @@ g.update(function (dt)
 
                                 if (vec[0] != 0) { state.me.cam.walk.right(dt * vec[0]); }
                 if (vec[1] != 0) { state.me.cam.walk.forward(dt * vec[1]); }
-    
+
             } break;
         }
     }
@@ -234,7 +255,8 @@ var t = 0;
 
 const draw_scene = (camera, shader) => {
 
-    g.web.assets[level_str].using_shader(shader || 'basic_colored')
+    let level = g.web.assets[level_str];
+    level.using_shader(shader || 'basic_colored')
         .with_attribute({name:'a_position', buffer: 'positions', components: 3})
         .with_attribute({name:'a_normal', buffer: 'normals', components: 3})
         .with_attribute({name:'a_color', buffer: 'colors', components: 3})
@@ -253,13 +275,23 @@ const draw_scene = (camera, shader) => {
     //     .set_uniform('u_model').mat4([].I(4))
     //     .draw_lines();
 
+    for (var i = 0; i < state.me.nav_choices.length; i++)
+    {
+        g.web.assets['mesh/nav_point'].using_shader('nav_point')
+        .with_attribute({name:'a_position', buffer:'positions', components: 3})
+        .with_attribute({name:'a_color', buffer:'colors', components: 3})
+        .with_camera(camera)
+        .set_uniform('u_model').mat4([].translate(state.me.nav_choices[i].add([0, -4, 0]).sub(level.center_of_mass())))
+        .draw_points();
+    }
+
     for (var team_name in state.rx_state)
     {
         let team = state.rx_state[team_name];
-        for (var i = 0; i < team.units.length; i++)
+        for (var id in team.players)
         {
-            const p = team.units[i];
-            const model = [].quat_rotation([0, 1, 0], 3.1415-p.angs[0]).quat_to_matrix().mat_mul([].translate(p.pos.add([0, 7, 0])));
+            const p = team.players[id];
+            const model = [].quat_rotation([0, 1, 0], 3.1415-p.angs[0]).quat_to_matrix().mat_mul([].translate(p.pos.add([5, 7, 5]).sub(level.center_of_mass())));
 
             g.web.assets['voxel/assault/legs/0'].using_shader(shader || 'basic_colored')
             .with_attribute({name:'a_position', buffer: 'positions', components: 3})
@@ -274,7 +306,6 @@ const draw_scene = (camera, shader) => {
             .set_uniform('u_light_ambient').vec3([135/255, 206/255, 235/255].mul(0.1))
             .draw_tris();
         }
-
         // if ('depth_only' != shader)
         // if (id == my_id) { continue; }
     }

@@ -12,7 +12,7 @@ void main (void)
 	const lowp vec3 emiss_green = vec3(79.0, 124.0, 16.0) / 255.0;
 	const lowp vec3 emiss_teal = vec3(153.0, 198.0, 255.0) / 255.0;
 
-	if (distance(v_color, emiss_magenta) < 0.001 || 
+	if (distance(v_color, emiss_magenta) < 0.001 ||
 		distance(v_color, emiss_green) < 0.001 ||
 		distance(v_color, emiss_teal) < 0.001)
 	{
@@ -49,6 +49,6 @@ void main (void)
 	lowp vec3 c_diff = v_color * u_light_diffuse * shading;
 	lowp vec3 c_ambi = v_color * u_light_ambient;
 
-	gl_FragColor = vec4(c_ambi + c_diff, 1.0);
+	gl_FragColor = vec4((c_ambi + c_diff), 1.0);
 
 }
