@@ -215,6 +215,10 @@ g.web.on('selected').do((int) => {
     state.me.selected = int;
 });
 
+g.web.on('your_turn').do(() => {
+    console.log('your turn');
+});
+
 
 g.update(function (dt)
 {
@@ -268,6 +272,20 @@ var t = 0;
 
 
 const draw_scene = (camera, shader) => {
+
+    g.web.assets['voxel/skybox']
+        .using_shader(shader || 'basic_colored')
+        .with_attribute({name:'a_position', buffer: 'positions', components: 3})
+        .with_attribute({name:'a_normal', buffer: 'normals', components: 3})
+        .with_attribute({name:'a_color', buffer: 'colors', components: 3})
+        .with_camera(camera)
+        .set_uniform('u_model').mat4([].scale(10).mat_mul([].translate([0, 200, 0])))
+        .set_uniform('u_shadow_map').texture(shadow_map.depth_attachment)
+        .set_uniform('u_light_view').mat4(light.view())
+        .set_uniform('u_light_proj').mat4(light.projection())
+        .set_uniform('u_light_diffuse').vec3([0.9, 0.7, 0.5])
+        .set_uniform('u_light_ambient').vec3([255/255, 106/255, 135/255].mul(0.4))
+        .draw_tris();
 
     let level = g.web.assets[level_str];
     level.using_shader(shader || 'basic_colored')
@@ -366,6 +384,6 @@ g.web.draw(function (dt)
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
     // draw_scene(light.orthographic(180, 180));
-    draw_scene(state.me.cam.perspective(Math.PI / 2));
+    draw_scene(state.me.cam.perspective(Math.PI / 2, 0.1, 2000));
 });
 

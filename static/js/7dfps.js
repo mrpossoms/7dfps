@@ -89,7 +89,7 @@ const nav = {
 				walk(x-1,y-1,z, points - 1),
 			];
 
-			if ([x, y, z].dist(target_point) < 0.001)
+			if (target_point && [x, y, z].dist(target_point) < 0.001)
 			{
 				return [[x, y, z]];
 			}
@@ -131,6 +131,15 @@ const nav = {
 		};
 	}
 }
+
+function active_player(state)
+{
+	let team = ['red', 'blue'][state.turn % 2];
+	let idx = Math.floor(state.turn / 2) % state.teams[team].players.length;		
+
+	return  state.teams[team].players[idx];
+}
+
 
 function spawn_points(state, voxel_json)
     {
@@ -260,7 +269,8 @@ try
 		unit: unit,
 		team: team,
 		spawn_points: spawn_points,
-		nav: nav
+		nav: nav,
+		active_player: active_player
 	};
 }
 catch(e)

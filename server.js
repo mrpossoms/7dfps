@@ -104,12 +104,12 @@ var msg = {
 	time_since_last: 1,
 };
 setInterval(function() {
-	game.server.update(game.server.players, dt);
+	game.server.update(game.server.players, game.server.state, dt);
 
 	for (var player_key in game.server.players)
 	{
 		var player = game.server.players[player_key];
-		game.server.player.update(player, dt);
+		game.server.player.update(player, game.server.state, dt);
 	}
 
 	msg.time_since_last += dt;

@@ -15,9 +15,9 @@ module.exports.server = {
 		nav_grid: null,
 		world: null,
 		teams: null,
-		turn: 0
+		turn: 0,
+		last_turn: 0,
 	},
-
 
 	// server initialization goes here
 	setup: function(state)
@@ -73,14 +73,23 @@ module.exports.server = {
 		{
 			console.log('player: ' + player.id + ' connected');
 
-			// player.cam = g.camera.fps({ collides: cam_colision_check });
-			// player.cam.position([0, 20, 0]);
-			// player.cam.force = 20;
 			player.team = 'spectator';
 			player.walk_dir = [0, 0];
 			player.unit = _7d.unit.create(state, vars);
 			player.moves = [];
 			player.last_target = [0, 0, 0];
+
+			player.is_my_turn = function()
+			{
+				let team = ['red', 'blue'][state.turn % 2];
+				if (team == player.team)
+				{
+					let idx = Math.floor(state.turn / 2) % state.teams[team].players.length;
+					return state.teams[team].players.indexOf(player.id) == idx;
+				}
+
+				return false;
+			}
 
 			let red_team = state.teams.red;
 			let blue_team = state.teams.blue;
@@ -108,18 +117,18 @@ module.exports.server = {
 			player.emit('team', player.team);
 
 			player.on('do_move', () => {
+				if (!player.is_my_turn()) { return; }
 				if (player.moves.length > 0) { return; }
+				if (!player.nav || !player.nav.path) { return; }
 				console.log('start movement');
-				player.moves = player.nav.path || [];
+				player.emit('nav', {choices: [], path: null});
+				player.moves = player.nav.path;
+				state.turn++;
 			});
-			// player.on('walk', (walk_dir) => {
-			// 	player.walk_dir = walk_dir;
-			// });
 
 			player.on('angles', (pitch_yaw) => {
+				// if (isNaN(pitch_yaw[0]) || isNaN(pitch_yaw[1])) { return; }  
 				player.unit.angles(pitch_yaw[1], pitch_yaw[0]);
-				// TODO shoot ray here
-
 				// If the player is moving, don't update nav grid stuff
 				if (player.moves.length > 0) { return; }
 
@@ -136,29 +145,40 @@ module.exports.server = {
 
 					if (!player.last_target.eq(nav_int.point))
 					{
-						player.nav = _7d.nav.choices(
-	                         state.nav_grid,
-	                         player.unit.position().add([0, 1, 0]),
-	                         player.unit.action_points(),
-	                         nav_int.point
-	                    );
-						player.emit('nav', player.nav);
-
-						if (nav_int.cell < 0)
+						if (!player.is_my_turn())
 						{
-							var selection = -1;
-							for (var i = 0; i < player.nav.choices.length; i++)
-							{
-								if(player.nav.choices[i].dist(nav_int.point) < 10)
-								{
-									selection = i;
-									break;
-								}
-							}
-
-							player.emit('selected', selection);
+							player.emit('nav', {choices: [], path: null});
+							player.emit('selected', -1);
 						}
+						else
+						{
+							player.nav = _7d.nav.choices(
+								state.nav_grid,
+								player.unit.position().add([0, 1, 0]),
+								player.unit.action_points(),
+								nav_int.point
+							);
+							player.emit('nav', player.nav);
+
+							if (nav_int.cell < 0)
+							{
+								var selection = -1;
+								for (var i = 0; i < player.nav.choices.length; i++)
+								{
+									if(player.nav.choices[i].dist(nav_int.point) < 10)
+									{
+										selection = i;
+										break;
+									}
+								}
+
+								player.emit('selected', selection);
+							}
+						}
+						
 					}
+					
+
 					
 
 					player.last_target = nav_int.point;
@@ -173,24 +193,15 @@ module.exports.server = {
 			// });
 		},
 
-		update: function(player, dt)
+		update: function(player, state, dt)
 		{
-			// if (player.walk_dir[0] > 0)      { player.cam.walk.right(dt); }
-			// else if (player.walk_dir[0] < 0) { player.cam.walk.left(dt); }
-
-			// if (player.walk_dir[1] > 0)      { player.cam.walk.forward(dt); }
-			// else if (player.walk_dir[1] < 0) { player.cam.walk.backward(dt); }
-
-			// player.cam.update(dt);
-
 			if (player.moves && player.moves.length > 0)
-			// while(player.moves.length > 0)
 			{
-				console.log('dest ' + player.moves[0]);
-				console.log('player ' + player.unit.position());
+				// console.log('dest ' + player.moves[0]);
+				// console.log('player ' + player.unit.position());
 				var delta = player.moves[0].sub(player.unit.position());
-				console.log('delta ' + delta);
-				console.log(player.moves);
+				// console.log('delta ' + delta);
+				// console.log(player.moves);
 
 				if (delta.len() < 0.5)
 				{
@@ -201,12 +212,10 @@ module.exports.server = {
 				else
 				{
 					player.unit.velocity(delta.norm().mul(25));
-					// player.unit.force(delta.norm().mul(100).add([0, -10, 0]), dt);
 				}
 			}
 
 			player.unit.position(player.unit.position().add(player.unit.velocity().mul(dt)));
-			// player.unit.update(dt);
 		},
 
 		disconnected: function(player, state)
@@ -228,9 +237,22 @@ module.exports.server = {
 
 
 	// main game loop
-	update: function(players, dt)
+	update: function(players, state, dt)
 	{
+		if (state.last_turn != state.turn)
+		{
+			let next_player = players[_7d.active_player(state)];
+			next_player.emit('your_turn');
 
+			next_player.nav = _7d.nav.choices(
+				state.nav_grid,
+				next_player.unit.position().add([0, 1, 0]),
+				next_player.unit.action_points()
+			);
+			next_player.emit('nav', next_player.nav);
+		}
+
+		state.last_turn = state.turn;
 	},
 
 
@@ -242,7 +264,8 @@ module.exports.server = {
 			},
 			blue: {
 				players: {}
-			}
+			},
+			turn: state.turn
 		};
 
 		for (var team_name in state.teams)
@@ -259,15 +282,6 @@ module.exports.server = {
 				};
 			}
 		}
-
-		// for (var id in players)
-		// {
-		// 	state.players[id] ={
-		// 		pos: players[id].cam.position(),
-		// 		vel: players[id].cam.velocity(),
-		// 		angs: [players[id].cam.yaw()]
-		// 	};
-		// }
 
 		for (var id in players)
 		{

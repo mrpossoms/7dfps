@@ -390,7 +390,7 @@ const g = {
 				{
 					fov = fov || Math.PI / 2;
 					near = near || 0.1;
-					far = far || 500;
+					far = far || 1000;
 
 					_proj = [].perspective(fov, g.web.gfx.aspect(), near, far);
 
