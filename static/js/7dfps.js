@@ -48,39 +48,64 @@ function grid(color_mapping, nav_cell_idx, voxel)
 }
 
 const nav = {
-	choices: function(nav_grid, start_point, action_points)
+	choices: function(nav_grid, start_point, action_points, target_point)
 	{
 		var visited = {};
 		var choices = [];
 		const s = nav_grid.scale;
 
+		if (target_point)
+		{
+			target_point = target_point.mul(1 / s).floor();
+		}
+
 		var walk = (x, y, z, points) => {
-			if (x < 0 || x >= nav_grid.width) { return; }
-			if (y < 0 || y >= nav_grid.height) { return; }
-			if (z < 0 || z >= nav_grid.depth) { return; }
-
+			if (points < 0) { return null; }
+			if (x < 0 || x >= nav_grid.width) { return null; }
+			if (y < 0 || y >= nav_grid.height) { return null; }
+			if (z < 0 || z >= nav_grid.depth) { return null; }
+			if (nav_grid.cells[x][y][z] >= 0) { return null; }
 			let id = x+':'+y+':'+z;
+			if (visited[id] && visited[id].points >= points) { return null; }
 
-			if (points < 0) { return; }
-			if (visited[id] && visited[id].points > points) { return; }
-			if (nav_grid.cells[x][y][z] >= 0) { return; }
-
-			// let point = [x, y, z]
 
 			visited[id] = {
 				points: points,
 				coord: [x, y, z]
 			};
 
-			walk(x,y,z+1, points - 1);
-			walk(x,y,z-1, points - 1);
-			walk(x+1,y,z, points - 1);
-			walk(x-1,y,z, points - 1);
-			walk(x,y+1,z, points - 1);
-			walk(x,y-1,z, points - 1);
-		};
-		walk(Math.floor(start_point[0] / s), Math.floor(start_point[1] / s), Math.floor(start_point[2] / s), action_points);
+			var path_segs = [
+				walk(x,y,z+1, points - 1),
+				walk(x,y,z-1, points - 1),
+				walk(x+1,y,z, points - 1),
+				walk(x-1,y,z, points - 1),
+				walk(x,y+1,z, points - 1),
+				walk(x,y-1,z, points - 1),
+			];
 
+			if ([x, y, z].dist(target_point) < 0.001)
+			{
+				return [[x, y, z]];
+			}
+
+			var shortest = null;
+			var shortest_len = 10000;
+
+			for (var i = 0; i < path_segs.length; i++)
+			{
+				if (path_segs[i])
+				if (path_segs[i].length < shortest_len)
+				{
+					shortest_len = path_segs[i].length;
+					shortest = path_segs[i];
+				}
+			}
+
+			if (shortest == null) { return null; }
+			return [[x, y, z]].concat(shortest);
+		};
+
+		var path = walk(Math.floor(start_point[0] / s), Math.floor(start_point[1] / s), Math.floor(start_point[2] / s), action_points);
 		for (var key in visited)
 		{
 			choices.push(
@@ -88,7 +113,16 @@ const nav = {
 			);
 		}
 
-		return choices;
+		if (path)
+		for (var i = 0; i < path.length; i++)
+		{
+	        path[i] = path[i].add([0.5, 0.5, 0.5]).mul(s);
+		}
+
+		return {
+			choices: choices,
+			path: path
+		};
 	}
 }
 

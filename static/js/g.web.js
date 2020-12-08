@@ -314,6 +314,7 @@ g.web = {
 					indices: null,
 					vertices: {},
 					shader_configs: {},
+					element_count: 0,
 
 					buffer: function(buffer_name)
 					{
@@ -322,8 +323,10 @@ g.web = {
 						return {
 							set_data: function(v)
 							{
+								let verts = v.as_Float32Array();
 								gl.bindBuffer(gl.ARRAY_BUFFER, mesh_ref.vertices[buffer_name]);
-								gl.bufferData(gl.ARRAY_BUFFER, v.as_Float32Array(), gl.DYNAMIC_DRAW);
+								gl.bufferData(gl.ARRAY_BUFFER, verts, gl.DYNAMIC_DRAW);
+								mesh_ref.element_count = verts.length;
 							},
 						};
 					},
@@ -494,6 +497,25 @@ g.web = {
 								else
 								{
 									gl.drawArrays(gl.LINES, 0, mesh_ref.element_count);
+								}
+
+								return this;
+							},
+							draw_line_strip: function()
+							{
+								if (mesh_ref.indices)
+								{
+									gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, mesh_ref.indices);
+									gl.drawElements(
+										gl.LINES,
+										mesh_ref.element_count,
+										mesh_ref.index_type,
+										0
+									);
+								}
+								else
+								{
+									gl.drawArrays(gl.LINE_STRIP, 0, mesh_ref.element_count / 3);
 								}
 
 								return this;

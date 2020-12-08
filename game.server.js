@@ -80,6 +80,7 @@ module.exports.server = {
 			player.team = 'spectator';
 			player.walk_dir = [0, 0];
 			player.unit = _7d.unit.create(state, vars);
+			player.path = [];
 
 			let red_team = state.teams.red;
 			let blue_team = state.teams.blue;
@@ -119,13 +120,29 @@ module.exports.server = {
 
 				if (int)
 				{
-					int = state.nav_grid.sample(int.point.add([0, 5, 0]));
-					int.point = int.point.add([5, 0, 5]);
+					try
+					{
+						int = state.nav_grid.sample(int.point.add([0, 5, 0]));
+						int.point = int.point.add([5, 0, 5]);
+					}
+					catch(e)
+					{
+						console.log(int + ' ' + e)
+					}
+
+					player.nav = _7d.nav.choices(
+                         state.nav_grid,
+                         player.unit.position(),
+                         player.unit.action_points(),
+                         int.point
+                    );
+					player.emit('nav', player.nav);
+
 					if (int.cell < 0)
 					{
-						for (var i = 0; i < player.nav_choices.length; i++)
+						for (var i = 0; i < player.nav.choices.length; i++)
 						{
-							if(player.nav_choices[i].dist(int.point) < 10)
+							if(player.nav.choices[i].dist(int.point) < 10)
 							{
 								player.emit('selected', i);
 								break;
@@ -219,9 +236,6 @@ module.exports.server = {
 			let player = players[id];
 			if (!player.emit) { continue; }
 			player.emit('state', tx_state);
-
-			player.nav_choices = _7d.nav.choices(state.nav_grid, player.unit.position(), player.unit.action_points());
-			player.emit('nav', player.nav_choices);
 		}
 	}
 };

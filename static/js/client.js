@@ -152,6 +152,9 @@ g.initialize(function ()
         g.web.assets['mesh/nav_point'] = g.web.gfx.mesh.create({
             positions: [[0, 0, 0]]
         });
+        g.web.assets['mesh/nav_path'] = g.web.gfx.mesh.create({
+            positions: []
+        });
     });
 
     light.orthographic();
@@ -185,8 +188,13 @@ g.web.on('team').do((type_str) => {
     console.log('you have joined ' + type_str);
 });
 
-g.web.on('nav').do((nav_choices) => {
-    state.me.nav_choices = nav_choices;
+g.web.on('nav').do((nav) => {
+    state.me.nav = nav;
+
+    if (g.web.assets['mesh/nav_path'] && nav.path)
+    {
+        g.web.assets['mesh/nav_path'].buffer('positions').set_data(nav.path);
+    }
 });
 
 g.web.on('state').do((s) => {
@@ -278,15 +286,27 @@ const draw_scene = (camera, shader) => {
     //     .set_uniform('u_model').mat4([].I(4))
     //     .draw_lines();
 
-    for (var i = 0; i < state.me.nav_choices.length; i++)
+    if (state.me.nav)
     {
-        let selected = i == state.me.selected;
-        g.web.assets['mesh/nav_point'].using_shader('nav_point')
+        for (var i = 0; i < state.me.nav.choices.length; i++)
+        {
+            let selected = i == state.me.selected;
+            g.web.assets['mesh/nav_point'].using_shader('nav_point')
+            .with_attribute({name:'a_position', buffer:'positions', components: 3})
+            .with_camera(camera)
+            .set_uniform('u_model').mat4([].translate(state.me.nav.choices[i].add([0, -4, 0]).sub(level.center_of_mass())))
+            .set_uniform('u_color').vec4(selected ? [0, 1, 0, 1] : [0, 1, 1, 0.5])
+            .draw_points();
+        }
+
+        gl.disable(gl.DEPTH_TEST);
+        g.web.assets['mesh/nav_path'].using_shader('nav_point')
         .with_attribute({name:'a_position', buffer:'positions', components: 3})
         .with_camera(camera)
-        .set_uniform('u_model').mat4([].translate(state.me.nav_choices[i].add([0, -4, 0]).sub(level.center_of_mass())))
-        .set_uniform('u_color').vec4(selected ? [0, 1, 0, 1] : [0, 1, 1, 0.5])
-        .draw_points();
+        .set_uniform('u_model').mat4([].translate([0, -4, 0].sub(level.center_of_mass())))
+        .set_uniform('u_color').vec4([0, 1, 1, 0.25])
+        .draw_line_strip();
+        gl.enable(gl.DEPTH_TEST);
     }
 
     if (state.me.selected)
