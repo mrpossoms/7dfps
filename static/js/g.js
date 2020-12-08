@@ -451,11 +451,11 @@ const g = {
 			else
 			{
 				// default cube collision rep
-				for (var i = -1; i <= 1; i++)
+				for (var i = -12; i <= 0; i++)
 				{
 					if (0 == i) { continue; }
 					coll_dirs.push([i, 0, 0].mul(0.125));
-					coll_dirs.push([0, i, 0].mul(0.125));
+					coll_dirs.push([0, i, 0].mul(1));
 					coll_dirs.push([0, 0, i].mul(0.125));
 				}
 
@@ -489,6 +489,11 @@ const g = {
 					var accel = cam.left().mul(-dt * cam.force / cam.mass);
 					velocity = velocity.add(accel);
 				}
+			};
+
+			cam.force = (force, dt) => {
+				var accel = force.mul(dt / cam.mass);
+				velocity = velocity.add(accel);
 			};
 
 			cam.velocity = (vel) => {

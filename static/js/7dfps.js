@@ -76,11 +76,17 @@ const nav = {
 
 			var path_segs = [
 				walk(x,y,z+1, points - 1),
+				walk(x,y+1,z+1, points - 1),
+				walk(x,y-1,z+1, points - 1),
 				walk(x,y,z-1, points - 1),
+				walk(x,y+1,z-1, points - 1),
+				walk(x,y-1,z-1, points - 1),
 				walk(x+1,y,z, points - 1),
+				walk(x+1,y+1,z, points - 1),
+				walk(x+1,y-1,z, points - 1),
 				walk(x-1,y,z, points - 1),
-				walk(x,y+1,z, points - 1),
-				walk(x,y-1,z, points - 1),
+				walk(x-1,y+1,z, points - 1),
+				walk(x-1,y-1,z, points - 1),
 			];
 
 			if ([x, y, z].dist(target_point) < 0.001)
@@ -116,7 +122,7 @@ const nav = {
 		if (path)
 		for (var i = 0; i < path.length; i++)
 		{
-	        path[i] = path[i].add([0.5, 0.5, 0.5]).mul(s);
+	        path[i] = path[i].add([0.5, 0.0, 0.5]).mul(s);
 		}
 
 		return {
@@ -161,6 +167,8 @@ let unit = {
 		var type = unit_class || "assault";
 		var hp = game_vars.units[type];
 		var action_points = game_vars.player.action_points;
+		cam.friction = 5;
+		cam.forces.push([0, -9, 0]);
 
 		return {
 			type: function(type_str)
@@ -178,6 +186,10 @@ let unit = {
 			{
 				hp = game_vars.units[type];
 				return this;
+			},
+			force: function(force, dt)
+			{
+				cam.force(force, dt);
 			},
 			update: function(dt)
 			{

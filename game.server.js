@@ -76,7 +76,6 @@ module.exports.server = {
 			// player.cam = g.camera.fps({ collides: cam_colision_check });
 			// player.cam.position([0, 20, 0]);
 			// player.cam.force = 20;
-			// player.cam.friction = 5;
 			player.team = 'spectator';
 			player.walk_dir = [0, 0];
 			player.unit = _7d.unit.create(state, vars);
@@ -107,6 +106,10 @@ module.exports.server = {
 			player.emit('id', player.id);
 			player.emit('team', player.team);
 
+			player.on('do_move', () => {
+				console.log('start movement');
+				player.moves = player.nav.path;
+			});
 			// player.on('walk', (walk_dir) => {
 			// 	player.walk_dir = walk_dir;
 			// });
@@ -169,6 +172,31 @@ module.exports.server = {
 			// else if (player.walk_dir[1] < 0) { player.cam.walk.backward(dt); }
 
 			// player.cam.update(dt);
+
+			if (player.moves && player.moves.length > 0)
+			// while(player.moves.length > 0)
+			{
+				console.log('dest ' + player.moves[0]);
+				console.log('player ' + player.unit.position());
+				var delta = player.moves[0].sub(player.unit.position());
+				console.log('delta ' + delta);
+				console.log(player.moves);
+
+				if (delta.len() < 0.5)
+				{
+					console.log('arrived');
+					player.moves = player.moves.slice(1);
+					player.unit.velocity([0, 0, 0]);
+				}
+				else
+				{
+					player.unit.velocity(delta.norm().mul(25));
+					// player.unit.force(delta.norm().mul(100).add([0, -10, 0]), dt);
+				}
+			}
+
+			player.unit.position(player.unit.position().add(player.unit.velocity().mul(dt)));
+			// player.unit.update(dt);
 		},
 
 		disconnected: function(player, state)

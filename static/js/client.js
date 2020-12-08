@@ -155,6 +155,8 @@ g.initialize(function ()
         g.web.assets['mesh/nav_path'] = g.web.gfx.mesh.create({
             positions: []
         });
+
+        gl.lineWidth(5);
     });
 
     light.orthographic();
@@ -221,16 +223,15 @@ g.update(function (dt)
 
     step_cool -= dt;
 
-    if (g.web.key.is_pressed('w')) { vec = vec.add([ 0, 1 ]); }
-    if (g.web.key.is_pressed('s')) { vec = vec.add([ 0,-1 ]); }
-    if (g.web.key.is_pressed('a')) { vec = vec.add([-1, 0 ]); }
-    if (g.web.key.is_pressed('d')) { vec = vec.add([ 1, 0 ]); }
-
-    if (vec.dot(vec) > 0.00001)
+    // if (vec.dot(vec) > 0.00001)
     {
         switch (state.me.team)
         {
             case 'spectator':
+                if (g.web.key.is_pressed('w')) { vec = vec.add([ 0, 1 ]); }
+                if (g.web.key.is_pressed('s')) { vec = vec.add([ 0,-1 ]); }
+                if (g.web.key.is_pressed('a')) { vec = vec.add([-1, 0 ]); }
+                if (g.web.key.is_pressed('d')) { vec = vec.add([ 1, 0 ]); }
                 if (vec[0] != 0) { state.me.cam.walk.right(dt * vec[0]); }
                 if (vec[1] != 0) { state.me.cam.walk.forward(dt * vec[1]); }
                 break;
@@ -247,9 +248,10 @@ g.update(function (dt)
                     g.web.signal('walk', vec);
                     walk_action = vec;
                 }
-                if (g.web.key.is_pressed(' ') && !state.me.cam.is_airborn())
+
+                if (g.web.key.is_pressed(' '))
                 {
-                    g.web.signal('jump');
+                    g.web.signal('do_move');
                 }
 
                                 if (vec[0] != 0) { state.me.cam.walk.right(dt * vec[0]); }
@@ -299,29 +301,27 @@ const draw_scene = (camera, shader) => {
             .draw_points();
         }
 
-        gl.disable(gl.DEPTH_TEST);
         g.web.assets['mesh/nav_path'].using_shader('nav_point')
         .with_attribute({name:'a_position', buffer:'positions', components: 3})
         .with_camera(camera)
-        .set_uniform('u_model').mat4([].translate([0, -4, 0].sub(level.center_of_mass())))
-        .set_uniform('u_color').vec4([0, 1, 1, 0.25])
-        .draw_line_strip();
-        gl.enable(gl.DEPTH_TEST);
-    }
-
-    if (state.me.selected)
-    {
-        gl.disable(gl.DEPTH_TEST);
-        if (state.me.selected.point)
-        g.web.assets['mesh/nav_point'].using_shader('nav_point')
-        .with_attribute({name:'a_position', buffer:'positions', components: 3})
-        .with_camera(camera)
-        .set_uniform('u_model').mat4([].translate(state.me.selected.point.add([0, 0, 0]).sub(level.center_of_mass())))
+        .set_uniform('u_model').mat4([].translate([0, 1, 0].sub(level.center_of_mass())))
         .set_uniform('u_color').vec4([0, 1, 0, 1])
-        .draw_points();
-
-        gl.enable(gl.DEPTH_TEST);
+        .draw_line_strip();
     }
+
+    // if (state.me.selected)
+    // {
+    //     gl.disable(gl.DEPTH_TEST);
+    //     if (state.me.selected.point)
+    //     g.web.assets['mesh/nav_point'].using_shader('nav_point')
+    //     .with_attribute({name:'a_position', buffer:'positions', components: 3})
+    //     .with_camera(camera)
+    //     .set_uniform('u_model').mat4([].translate(state.me.selected.point.add([0, 0, 0]).sub(level.center_of_mass())))
+    //     .set_uniform('u_color').vec4([0, 1, 0, 1])
+    //     .draw_points();
+
+    //     gl.enable(gl.DEPTH_TEST);
+    // }
 
     for (var team_name in state.rx_state)
     {
