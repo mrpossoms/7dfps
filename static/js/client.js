@@ -193,9 +193,10 @@ g.web.on('team').do((type_str) => {
 g.web.on('nav').do((nav) => {
     state.me.nav = nav;
 
-    if (g.web.assets['mesh/nav_path'] && nav.path)
+    if (g.web.assets['mesh/nav_path'])
     {
-        g.web.assets['mesh/nav_path'].buffer('positions').set_data(nav.path);
+
+        g.web.assets['mesh/nav_path'].buffer('positions').set_data(nav.path ? nav.path : []);
     }
 });
 
@@ -296,7 +297,7 @@ const draw_scene = (camera, shader) => {
             g.web.assets['mesh/nav_point'].using_shader('nav_point')
             .with_attribute({name:'a_position', buffer:'positions', components: 3})
             .with_camera(camera)
-            .set_uniform('u_model').mat4([].translate(state.me.nav.choices[i].add([0, -4, 0]).sub(level.center_of_mass())))
+            .set_uniform('u_model').mat4([].translate(state.me.nav.choices[i].add([0, -2, 0]).sub(level.center_of_mass())))
             .set_uniform('u_color').vec4(selected ? [0, 1, 0, 1] : [0, 1, 1, 0.5])
             .draw_points();
         }
@@ -304,7 +305,7 @@ const draw_scene = (camera, shader) => {
         g.web.assets['mesh/nav_path'].using_shader('nav_point')
         .with_attribute({name:'a_position', buffer:'positions', components: 3})
         .with_camera(camera)
-        .set_uniform('u_model').mat4([].translate([0, 1, 0].sub(level.center_of_mass())))
+        .set_uniform('u_model').mat4([].translate([0, 3, 0].sub(level.center_of_mass())))
         .set_uniform('u_color').vec4([0, 1, 0, 1])
         .draw_line_strip();
     }

@@ -79,7 +79,8 @@ module.exports.server = {
 			player.team = 'spectator';
 			player.walk_dir = [0, 0];
 			player.unit = _7d.unit.create(state, vars);
-			player.path = [];
+			player.moves = [];
+			player.last_target = [0, 0, 0];
 
 			let red_team = state.teams.red;
 			let blue_team = state.teams.blue;
@@ -107,8 +108,9 @@ module.exports.server = {
 			player.emit('team', player.team);
 
 			player.on('do_move', () => {
+				if (player.moves.length > 0) { return; }
 				console.log('start movement');
-				player.moves = player.nav.path;
+				player.moves = player.nav.path || [];
 			});
 			// player.on('walk', (walk_dir) => {
 			// 	player.walk_dir = walk_dir;
@@ -117,41 +119,49 @@ module.exports.server = {
 			player.on('angles', (pitch_yaw) => {
 				player.unit.angles(pitch_yaw[1], pitch_yaw[0]);
 				// TODO shoot ray here
+
+				// If the player is moving, don't update nav grid stuff
+				if (player.moves.length > 0) { return; }
+
 				let eyes = player.unit.position().add([0, 12, 0]);
 				let ray = player.unit.forward().mul(300);
 				let int = state.world.intersection(eyes, ray);
 
 				if (int)
 				{
-					try
-					{
-						int = state.nav_grid.sample(int.point.add([0, 5, 0]));
-						int.point = int.point.add([5, 0, 5]);
-					}
-					catch(e)
-					{
-						console.log(int + ' ' + e)
-					}
+					nav_int = state.nav_grid.sample(int.point.add([0, 5, 0]));
 
-					player.nav = _7d.nav.choices(
-                         state.nav_grid,
-                         player.unit.position(),
-                         player.unit.action_points(),
-                         int.point
-                    );
-					player.emit('nav', player.nav);
+					if (!nav_int) { return; }
+					nav_int.point = nav_int.point.add([5, 0, 5]);
 
-					if (int.cell < 0)
+					if (!player.last_target.eq(nav_int.point))
 					{
-						for (var i = 0; i < player.nav.choices.length; i++)
+						player.nav = _7d.nav.choices(
+	                         state.nav_grid,
+	                         player.unit.position().add([0, 1, 0]),
+	                         player.unit.action_points(),
+	                         nav_int.point
+	                    );
+						player.emit('nav', player.nav);
+
+						if (nav_int.cell < 0)
 						{
-							if(player.nav.choices[i].dist(int.point) < 10)
+							var selection = -1;
+							for (var i = 0; i < player.nav.choices.length; i++)
 							{
-								player.emit('selected', i);
-								break;
+								if(player.nav.choices[i].dist(nav_int.point) < 10)
+								{
+									selection = i;
+									break;
+								}
 							}
+
+							player.emit('selected', selection);
 						}
 					}
+					
+
+					player.last_target = nav_int.point;
 				}
 			});
 

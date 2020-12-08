@@ -451,7 +451,7 @@ const g = {
 			else
 			{
 				// default cube collision rep
-				for (var i = -12; i <= 0; i++)
+				for (var i = -1; i <= 1; i++)
 				{
 					if (0 == i) { continue; }
 					coll_dirs.push([i, 0, 0].mul(0.125));
