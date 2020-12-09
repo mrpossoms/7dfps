@@ -82,6 +82,7 @@ module.exports.server = {
 			player.last_target = [0, 0, 0];
 			player.shooting = false;
 			player.shot_cooldown = 0;
+			player.time_shooting = 0;
 
 			player.is_my_turn = function()
 			{
@@ -132,6 +133,7 @@ module.exports.server = {
 
 			player.on('trigger_down', () => {
 				player.shooting = true;
+				player.time_shooting = 0;
 				console.log('player ' + player.id +' starts shooting');
 			});
 
@@ -243,8 +245,19 @@ module.exports.server = {
 				{
 					let unit = player.unit.type();
 					let unit_vars = vars.units[unit];
-					state.projectiles.spawn(player.unit.eyes(), player.unit.forward().mul(unit_vars.weapon.projectile.velocity_unit_sec));
+
+					let proj_stats = unit_vars.weapon.projectile;
+					let sb_yaw = proj_stats.spread_yaw_base * 3.1415/180;
+					let sb_pitch = proj_stats.spread_pitch_base * 3.1415/180;
+					let proj_vel = proj_stats.velocity_unit_sec;
+
+					let yaw_sp = [].quat_rotation([0, 1, 0], Math.random.uni() * (sb_yaw + proj_stats.spread_yaw_deg_sec * player.time_shooting));
+					let pitch_sp = [].quat_rotation([1, 0, 0], Math.random.uni() * (sb_pitch + proj_stats.spread_pitch_deg_sec * player.time_shooting));
+					let sp_q = pitch_sp.quat_mul(yaw_sp);
+					state.projectiles.spawn(player.unit.eyes(), sp_q.quat_rotate_vector(player.unit.forward().mul(proj_vel)));
 					player.shot_cooldown = 1.0 / unit_vars.weapon.rounds_sec;
+
+					player.time_shooting += dt;
 				}
 			}
 

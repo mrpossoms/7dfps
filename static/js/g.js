@@ -1405,6 +1405,11 @@ Math.ray = function(ray)
 	};
 };
 
+Math.random.uni = function()
+{
+	return 2 * Math.random() - 1;
+}
+
 Math.random.unit_vector = function(i)
 {
 	i = i || Math.floor(Math.random() * 1000);
