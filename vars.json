@@ -12,7 +12,8 @@
 	  ]
    },
 	"player": {
-		"action_points": 5
+		"action_points": 5,
+      "turn_sec": 5
 	},
    "units":{
 	  "sniper":{

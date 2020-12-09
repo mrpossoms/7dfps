@@ -17,6 +17,7 @@ module.exports.server = {
 		teams: null,
 		turn: 0,
 		last_turn: 0,
+		turn_time: 0,
 	},
 
 	// server initialization goes here
@@ -286,6 +287,7 @@ module.exports.server = {
 	// main game loop
 	update: function(players, state, dt)
 	{
+		if (state.teams['red'].players.length * state.teams['blue'].players.length == 0) { return; }
 		state.projectiles.update(state.world, dt);
 		// console.log('projectiles: ' + state.projectiles.active().length);
 
@@ -300,9 +302,17 @@ module.exports.server = {
 				next_player.unit.action_points()
 			);
 			next_player.emit('nav', next_player.nav);
+
+			state.turn_time = vars.player.turn_sec;
 		}
 
 		state.last_turn = state.turn;
+		state.turn_time -= dt;
+		if (state.turn_time <= 0)
+		{
+			players[_7d.active_player(state)].emit('nav', {choices: [], path: null});
+			state.turn += 1; 
+		}
 	},
 
 
