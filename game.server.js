@@ -39,6 +39,8 @@ module.exports.server = {
 			blue: _7d.team.create(state, vars),
 		};
 
+		state.projectiles = _7d.projectile_batch.create(100, 0.0);
+		state.projectiles.accelerations().push([0, -9, 0]);
 
 		{ // load level
 			const path = level_str;
@@ -78,6 +80,8 @@ module.exports.server = {
 			player.unit = _7d.unit.create(state, vars);
 			player.moves = [];
 			player.last_target = [0, 0, 0];
+			player.shooting = false;
+			player.shot_cooldown = 0;
 
 			player.is_my_turn = function()
 			{
@@ -120,10 +124,21 @@ module.exports.server = {
 				if (!player.is_my_turn()) { return; }
 				if (player.moves.length > 0) { return; }
 				if (!player.nav || !player.nav.path) { return; }
-				console.log('start movement');
+				console.log('player ' + player.id +' start move');
 				player.emit('nav', {choices: [], path: null});
 				player.moves = player.nav.path;
 				state.turn++;
+			});
+
+			player.on('trigger_down', () => {
+				player.shooting = true;
+				console.log('player ' + player.id +' starts shooting');
+			});
+
+			player.on('trigger_up', () => {
+				player.shooting = false;
+				player.shot_cooldown = 0;
+				console.log('player ' + player.id +' stops shooting');
 			});
 
 			player.on('angles', (pitch_yaw) => {
@@ -132,7 +147,7 @@ module.exports.server = {
 				// If the player is moving, don't update nav grid stuff
 				if (player.moves.length > 0) { return; }
 
-				let eyes = player.unit.position().add([0, 12, 0]);
+				let eyes = player.unit.eyes();
 				let ray = player.unit.forward().mul(300);
 				let int = state.world.intersection(eyes, ray);
 
@@ -205,9 +220,14 @@ module.exports.server = {
 
 				if (delta.len() < 0.5)
 				{
-					console.log('arrived');
+					// console.log('arrived');
 					player.moves = player.moves.slice(1);
 					player.unit.velocity([0, 0, 0]);
+
+					if (player.moves.length == 0)
+					{
+						console.log('player: ' + player.id + ' move complete');
+					}
 				}
 				else
 				{
@@ -215,6 +235,20 @@ module.exports.server = {
 				}
 			}
 
+			if (player.shooting)
+			{
+				// console.log('unit: ' + player.unit.type());
+				// console.log('rps: ' + vars.units[player.unit.type()].weapon.rounds_sec);
+				if (player.shot_cooldown <= 0)
+				{
+					let unit = player.unit.type();
+					let unit_vars = vars.units[unit];
+					state.projectiles.spawn(player.unit.eyes(), player.unit.forward().mul(unit_vars.weapon.projectile.velocity_unit_sec));
+					player.shot_cooldown = 1.0 / unit_vars.weapon.rounds_sec;
+				}
+			}
+
+			player.shot_cooldown -= dt;
 			player.unit.position(player.unit.position().add(player.unit.velocity().mul(dt)));
 		},
 
@@ -239,6 +273,9 @@ module.exports.server = {
 	// main game loop
 	update: function(players, state, dt)
 	{
+		state.projectiles.update(state.world, dt);
+		// console.log('projectiles: ' + state.projectiles.active().length);
+
 		if (state.last_turn != state.turn)
 		{
 			let next_player = players[_7d.active_player(state)];
@@ -265,6 +302,7 @@ module.exports.server = {
 			blue: {
 				players: {}
 			},
+			projectiles: state.projectiles.active(),
 			turn: state.turn
 		};
 

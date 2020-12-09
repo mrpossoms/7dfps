@@ -142,27 +142,27 @@ function active_player(state)
 
 
 function spawn_points(state, voxel_json)
+{
+    for (var vi = 0; vi < voxel_json.XYZI.length; vi++)
     {
-        for (var vi = 0; vi < voxel_json.XYZI.length; vi++)
+        const set = voxel_json.XYZI[vi];
+        const color = [ voxel_json.RGBA[set.c-1].r, voxel_json.RGBA[set.c-1].g, voxel_json.RGBA[set.c-1].b ];
+
+        if (color.eq([255, 0, 0]))
         {
-            const set = voxel_json.XYZI[vi];
-            const color = [ voxel_json.RGBA[set.c-1].r, voxel_json.RGBA[set.c-1].g, voxel_json.RGBA[set.c-1].b ];
-
-            if (color.eq([255, 0, 0]))
-            {
-            	state.teams.red.spawn_points.push([set.x, set.z, set.y]);
-                // voxel_json.XYZI[vi].c = 1;
-            }
-
-            if (color.eq([0, 0, 255]))
-            {
-            	state.teams.blue.spawn_points.push([set.x, set.z, set.y]);
-                // voxel_json.XYZI[vi].c = 1;
-            }
+        	state.teams.red.spawn_points.push([set.x, set.z, set.y]);
+            // voxel_json.XYZI[vi].c = 1;
         }
 
-        return voxel_json;
-    };
+        if (color.eq([0, 0, 255]))
+        {
+        	state.teams.blue.spawn_points.push([set.x, set.z, set.y]);
+            // voxel_json.XYZI[vi].c = 1;
+        }
+    }
+
+    return voxel_json;
+};
 
 let unit = {
 	create: function(state, game_vars, unit_class)
@@ -219,6 +219,7 @@ let unit = {
 				return cam.forward();
 			},
 			position: function(pos) { return cam.position(pos); },
+			eyes: function() { return cam.position().add([0, 12, 0]); },
 			velocity: function(vel) { return cam.velocity(vel); },
 			action_points: function(pts)
 			{
@@ -261,6 +262,94 @@ let team = {
 	}
 };
 
+let projectile_batch = {
+	create: function(max_projectiles, drag)
+	{
+		var projectiles = [];
+		var accelerations = [];
+		var drag = drag || 0;
+
+		var active_projectiles = 0;
+
+		for (var i = 0; i < max_projectiles; i++)
+		{
+			projectiles.push({
+				pos: [0, 0, 0],
+				vel: [0, 0, 0],
+				mass: 0,
+				life: 10,
+				owner: -1
+			});
+		}
+
+		function swap(i, j)
+		{
+			let tmp = projectiles[i];
+			projectiles[i] = projectiles[j];
+			projectiles[j] = tmp;
+		}
+
+		function kill(idx)
+		{
+			if (active_projectiles == 0) { return; }
+			swap(idx, active_projectiles - 1);
+			active_projectiles--;
+		}
+
+		return {
+			accelerations: function() { return accelerations; },
+			update: function(world, dt)
+			{
+				for (var i = 0; i < active_projectiles; i++)
+				{
+					let p = projectiles[i];
+					p.life -= dt;
+					if (p.life <= 0) { kill(i); }
+				}
+
+				for (var i = 0; i < active_projectiles; i++)
+				{
+					let p = projectiles[i];
+					for (var j = 0; j < accelerations.length; j++)
+					{
+						p.vel = p.vel.add(accelerations[j].mul(dt));
+					}
+
+					let drag_vec = (p.vel.mul(p.vel).mul(dt * drag));
+					p.vel = p.vel.add(drag);
+
+					let int = world.intersection(p.pos, p.vel.mul(dt));
+					if (int)
+					{
+						// p.vel = p.vel.sub(int.normal.mul(int.normal.dot(p.vel) * 2));
+						kill(i);
+					}
+					else
+					{
+						p.pos = p.pos.add(p.vel.mul(dt));
+					}
+				}
+			},
+			spawn: function(pos, vel, mass, owner)
+			{
+				if (active_projectiles < max_projectiles)
+				{
+					projectiles[active_projectiles].pos = pos;
+					projectiles[active_projectiles].vel = vel;
+					projectiles[active_projectiles].mass = mass;
+					projectiles[active_projectiles].owner = owner;
+					projectiles[active_projectiles].life = 2;
+					active_projectiles++;
+				}
+			},
+			kill: kill,
+			active: function()
+			{
+				return projectiles.slice(0, active_projectiles);
+			}
+		}
+	}
+};
 
 try
 {
@@ -270,7 +359,8 @@ try
 		team: team,
 		spawn_points: spawn_points,
 		nav: nav,
-		active_player: active_player
+		active_player: active_player,
+		projectile_batch: projectile_batch
 	};
 }
 catch(e)

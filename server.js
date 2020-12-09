@@ -98,7 +98,7 @@ io.on('connection', function(player) {
 });
 
 // game mainloop
-const dt = 1 / 30;
+const dt = 1 / 60;
 var msg = {
 	rate: 1 / 30,
 	time_since_last: 1,

@@ -174,8 +174,14 @@ g.web.pointer.on_move(function (event)
 });
 
 
-g.web.pointer.on_press((event) => {
+g.web.pointer.on_press(function (event) {
     g.web._canvas.requestPointerLock();
+    g.web.signal('trigger_down');
+});
+
+
+g.web.pointer.on_release(function (event) {
+    g.web.signal('trigger_up');
 });
 
 
@@ -341,6 +347,17 @@ const draw_scene = (camera, shader) => {
 
     //     gl.enable(gl.DEPTH_TEST);
     // }
+
+    for (var i = 0; i < state.rx_state.projectiles.length; i++)
+    {
+        let p = state.rx_state.projectiles[i];
+        g.web.assets['mesh/nav_point'].using_shader('nav_point')
+        .with_attribute({name:'a_position', buffer:'positions', components: 3})
+        .with_camera(camera)
+        .set_uniform('u_model').mat4([].translate(p.pos.sub(level.center_of_mass())))
+        .set_uniform('u_color').vec4([1, 1, 0, 1])
+        .draw_points();
+    }
 
     for (var team_name in state.rx_state)
     {

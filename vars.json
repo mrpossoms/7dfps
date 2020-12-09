@@ -58,7 +58,7 @@
 			"projectile":{
 			   "count":5,
 			   "mass":1,
-			   "velocity_unit_sec":25,
+			   "velocity_unit_sec":250,
 			   "spread_yaw_base":5,
 			   "spread_pitch_base":5,
 			   "spread_yaw_deg_sec":5,
@@ -79,12 +79,12 @@
 			"crouching_units_sec":0.5
 		 },
 		 "weapon":{
-			"rounds_sec":2,
+			"rounds_sec":20,
 			"capacity":20,
 			"projectile":{
 			   "count":1,
 			   "mass":1,
-			   "velocity_unit_sec":10,
+			   "velocity_unit_sec":250,
 			   "spread_yaw_base":1,
 			   "spread_pitch_base":1,
 			   "spread_yaw_deg_sec":1,
