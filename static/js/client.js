@@ -202,7 +202,6 @@ g.web.on('nav').do((nav) => {
 
     if (g.web.assets['mesh/nav_path'])
     {
-
         g.web.assets['mesh/nav_path'].buffer('positions').set_data(nav.path ? nav.path : []);
     }
 });
@@ -223,8 +222,8 @@ g.web.on('state').do((s) => {
             {
                 state.player_anims[pid] = new (g.animation.create({
                     frames: [
-                        { asset: "voxel/sniper/legs/walk/0", duration: 100 },
-                        { asset: "voxel/sniper/legs/walk/1", duration: 100 },
+                        { asset: "voxel/sniper/legs/walk/0", duration: 333 },
+                        { asset: "voxel/sniper/legs/walk/1", duration: 333 },
                     ],
                     meta: {
                         frameTags: [
@@ -232,6 +231,8 @@ g.web.on('state').do((s) => {
                         ]
                     } 
                 }))();
+
+                state.player_anims[pid].set('walk');
             }
         }
 
@@ -298,6 +299,34 @@ g.update(function (dt)
 
             } break;
         }
+    }
+
+    for (var team_name in state.rx_state)
+    {
+        let team = state.rx_state[team_name];
+        for (var id in team.players)
+        {
+            let player = team.players[id]; 
+            player.pos = player.pos.add(player.vel.mul(dt));
+
+            if (player.vel.dot(player.vel) > 0.001)
+            {
+                // state.player_anims[id].set('walk');
+                state.player_anims[id].pause(false);
+            }
+            else
+            {
+                state.player_anims[id].pause(true);
+            }
+
+            state.player_anims[id].tick(dt);
+        }
+    }
+
+    for (var i = 0; i < state.rx_state.projectiles.length; i++)
+    {
+        let p = state.rx_state.projectiles[i];
+        p.pos = p.pos.add(p.vel.mul(dt));
     }
 });
 
@@ -440,7 +469,6 @@ g.web.draw(function (dt)
 {
     t += dt;
     if (g.is_running == false) { return; }
-
 
     light.look_at([80, 140, -40], [0, 0, 0], [0, 1, 0]);
     shadow_map.bind_as_target();

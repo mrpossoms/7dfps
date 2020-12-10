@@ -378,6 +378,7 @@ module.exports.server = {
 				tx_state[team_name].players[team.players[i]] = {
 					type: unit.type,
 					pos: unit.position(),
+					vel: unit.velocity(),
 					angs: unit.angles()
 				};
 			}
