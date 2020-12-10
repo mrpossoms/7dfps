@@ -282,9 +282,9 @@ module.exports.server = {
 				if (last_hp > 0 && player.unit.hp() <= 0)
 				{ // Player was killed
 					player.shooting = false;
+					player.team = 'spectator';
 					console.log('player: ' + player.id + ' was killed');
 					player.emit('killed');
-					player.emit('team', 'spectator');
 				}
 
 				player.accumulated_damage = 0;

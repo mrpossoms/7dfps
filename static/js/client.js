@@ -313,8 +313,8 @@ g.update(function (dt)
 
                 if (step_cool <= 0)
                 {
-                    walk_sounds.pick().position(state.me.cam.position()).play();
-                    step_cool = 0.1;
+                    walk_sounds.pick().position(player.pos.sub(level.center_of_mass())).play();
+                    step_cool = 0.333;
                 }
             }
             else
