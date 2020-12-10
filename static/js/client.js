@@ -131,9 +131,9 @@ g.initialize(function ()
             g.web.assets['shaders/nav_point.frag']
         );
 
-        for (var i = 0; i < 4; i++)
+        for (var i = 0; i < 5; i++)
         {
-            walk_sounds.push(new g.web.assets['sound/step' + (i+1)]([0, 0, 0]));
+            walk_sounds.push(new g.web.assets['sound/step' + i]([0, 0, 0]));
         }
 
         shadow_map = g.web.gfx.render_target.create({width: 1024, height: 1024}).shadow_map();
@@ -278,25 +278,10 @@ g.update(function (dt)
                 break;
             default:
             {
-                if (step_cool <= 0)
-                {
-                    // walk_sounds.pick().position(state.me.cam.position()).play();
-                    step_cool = 0.1;
-                }
-
-                if (!vec.eq(walk_action))
-                {
-                    g.web.signal('walk', vec);
-                    walk_action = vec;
-                }
-
                 if (g.web.key.is_pressed(' '))
                 {
                     g.web.signal('do_move');
                 }
-
-                                if (vec[0] != 0) { state.me.cam.walk.right(dt * vec[0]); }
-                if (vec[1] != 0) { state.me.cam.walk.forward(dt * vec[1]); }
 
             } break;
         }
@@ -310,7 +295,7 @@ g.update(function (dt)
         let offset = [].quat_rotation([1, 0, 0], me.angs[1]).quat_rotate_vector([0, 3, 1]);
         offset = [].quat_rotation([0, 1, 0], me.angs[0]).quat_rotate_vector(offset);
         state.me.cam.position(me.pos.add([0, 9, 0].add(offset)).sub(level.center_of_mass()));
-        state.me.cam.velocity(me.vel);        
+        // state.me.cam.velocity(me.vel);        
     }
 
     for (var team_name in state.rx_state)
@@ -325,6 +310,12 @@ g.update(function (dt)
             {
                 // state.player_anims[id].set('walk');
                 state.player_anims[id].pause(false);
+
+                if (step_cool <= 0)
+                {
+                    walk_sounds.pick().position(state.me.cam.position()).play();
+                    step_cool = 0.1;
+                }
             }
             else
             {
@@ -340,6 +331,8 @@ g.update(function (dt)
         let p = state.rx_state.projectiles[i];
         p.pos = p.pos.add(p.vel.mul(dt));
     }
+
+    step_cool -= dt;
 });
 
 var t = 0;
