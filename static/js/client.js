@@ -20,8 +20,6 @@ var state = {
     player_anims: {},
     rx_state: null,
 };
-var my_id = null;
-var my_team = null;
 
 
 state.me.cam.position([0, 20, 0]);
@@ -186,16 +184,16 @@ g.web.pointer.on_release(function (event) {
 });
 
 
-g.web.on('id').do((id) => {
-    my_id = id;
-    console.log('you are player ' + id);
-});
+// g.web.on('id').do((id) => {
+//     my_id = id;
+//     console.log('you are player ' + id);
+// });
 
-g.web.on('team').do((type_str) => {
-    state.me.team = type_str;
-    my_team = type_str;
-    console.log('you have joined ' + type_str);
-});
+// g.web.on('team').do((type_str) => {
+//     state.me.team = type_str;
+//     my_team = type_str;
+//     console.log('you have joined ' + type_str);
+// });
 
 g.web.on('nav').do((nav) => {
     state.me.nav = nav;
@@ -237,6 +235,13 @@ g.web.on('state').do((s) => {
             }
         }
 
+    }
+
+    if (s.my_id != state.me.id)
+    {
+        state.me.team = s.my_team;
+        state.me.id = s.my_id;
+        console.log('you are player ' + state.me.id + ' on team ' + state.me.team);
     }
 
 });
@@ -297,10 +302,15 @@ g.update(function (dt)
         }
     }
 
-    if (my_team != "spectator")
+    if (state.me.team != "spectator")
     {
-        state.me.cam.position(state.rx_state[my_team].players[my_id].pos.add([0, 12, 0]).sub(level.center_of_mass()));
-        state.me.cam.velocity(state.rx_state[my_team].players[my_id].vel);        
+        let me = state.rx_state[state.me.team].players[state.me.id];
+        // let rot_scale = [].quat_rotation([0, 1, 0], me.angs[0]);
+        // rot_scale = rot_scale.quat_mul([].quat_rotation([1, 0, 0], me.angs[1]));
+        let offset = [].quat_rotation([1, 0, 0], me.angs[1]).quat_rotate_vector([0, 3, 1]);
+        offset = [].quat_rotation([0, 1, 0], me.angs[0]).quat_rotate_vector(offset);
+        state.me.cam.position(me.pos.add([0, 9, 0].add(offset)).sub(level.center_of_mass()));
+        state.me.cam.velocity(me.vel);        
     }
 
     for (var team_name in state.rx_state)
@@ -427,7 +437,7 @@ const draw_scene = (camera, shader) => {
             const p = team.players[id];
             let angs = p.angs;
 
-            if (id == my_id && my_team != "spectator")
+            if (id == state.me.id && state.me.team != "spectator")
             {
                 angs[0] = state.me.cam.yaw();
                 angs[1] = state.me.cam.pitch();
@@ -472,7 +482,7 @@ const draw_scene = (camera, shader) => {
 
         }
         // if ('depth_only' != shader)
-        // if (id == my_id) { continue; }
+        // if (id == state.me.id) { continue; }
     }
 };
 

@@ -121,8 +121,8 @@ module.exports.server = {
 				}
 			}
 
-			player.emit('id', player.id);
-			player.emit('team', player.team);
+			// player.emit('id', player.id);
+			// player.emit('team', player.team);
 
 			player.on('do_move', () => {
 				if (player.unit.hp() <= 0) { return; }
@@ -373,7 +373,8 @@ module.exports.server = {
 					type: unit.type(),
 					pos: unit.position(),
 					vel: unit.velocity(),
-					angs: unit.angles()
+					angs: unit.angles(),
+					hp: unit.hp()
 				};
 			}
 		}
@@ -382,6 +383,8 @@ module.exports.server = {
 		{
 			let player = players[id];
 			if (!player.emit) { continue; }
+			tx_state.my_id = id;
+			tx_state.my_team = player.team;
 			player.emit('state', tx_state);
 		}
 	}

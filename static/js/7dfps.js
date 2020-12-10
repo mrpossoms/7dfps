@@ -183,6 +183,7 @@ let unit = {
 		var type = unit_class || "assault";
 		const unit_stats = game_vars.units[type];
 		var hp = unit_stats.hp;
+		var ammo = unit_stats.weapon.capacity;
 		var action_points = game_vars.player.action_points;
 		cam.friction = 5;
 		cam.forces.push([0, -9, 0]);
@@ -226,6 +227,12 @@ let unit = {
 			{
 				return cam.forward();
 			},
+			ammo: function (a)
+			{
+				if (a) { ammo = a; }
+
+				return ammo;
+			},
 			position: function(pos) { return cam.position(pos); },
 			eyes: function() { return cam.position().add([0, 12, 0]); },
 			velocity: function(vel) { return cam.velocity(vel); },
@@ -256,8 +263,12 @@ let team = {
 			spawn_points: spawn_points,
 			spawn_player: function(player) {
 				let idx = players.indexOf(player.id);
+				let unit_class = ['assault', 'sniper', 'shotgun'][idx % 3];
+				let class_stats = game_vars.units[unit_class];
 				player.unit.reset().position(spawn_points[idx].add([5, 0, 5]));
-				console.log('player ' + player.id + ' spawned at ' + spawn_points[idx]);
+				player.unit.type(unit_class);
+				player.unit.hp(class_stats.hp);
+				console.log('player ' + player.id + ' spawned as ' + unit_class + ' at ' + spawn_points[idx]);
 			},
 			living_players: function(players_map)
 			{

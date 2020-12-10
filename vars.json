@@ -32,8 +32,8 @@
 			"capacity":1,
 			"projectile":{
 			   "count":1,
-			   "mass":1,
-			   "velocity_unit_sec":50,
+			   "mass":0.1,
+			   "velocity_unit_sec":500,
 			   "spread_yaw_base":0,
 			   "spread_pitch_base":0,
 			   "spread_yaw_deg_sec":0,
