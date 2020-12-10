@@ -421,8 +421,17 @@ const draw_scene = (camera, shader) => {
         let team = state.rx_state[team_name];
         for (var id in team.players)
         {
+
             const p = team.players[id];
-            let rot_scale = [].quat_rotation([0, 1, 0], 3.1415-p.angs[0]).quat_to_matrix().mat_mul([].scale(0.20));
+            let angs = p.angs;
+
+            if (id == my_id && my_team != "spectator")
+            {
+                angs[0] = state.me.cam.yaw();
+                angs[1] = state.me.cam.pitch();
+            }
+
+            let rot_scale = [].quat_rotation([0, 1, 0], 3.1415-angs[0]).quat_to_matrix().mat_mul([].scale(0.20));
             
             { // draw legs
                 const model = rot_scale.mat_mul([].translate(p.pos.add([0, 4, 0]).sub(level.center_of_mass())));
@@ -443,7 +452,7 @@ const draw_scene = (camera, shader) => {
             }
 
             { // draw head
-                rot_scale = [].quat_rotation([1, 0, 0], p.angs[1]).quat_to_matrix().mat_mul(rot_scale);
+                rot_scale = [].quat_rotation([1, 0, 0], angs[1]).quat_to_matrix().mat_mul(rot_scale);
                 const model = rot_scale.mat_mul([].translate(p.pos.add([0, 9, 0]).sub(level.center_of_mass())));
                 g.web.assets['voxel/sniper/head/0'].using_shader(shader || 'basic_colored')
                 .with_attribute({name:'a_position', buffer: 'positions', components: 3})
