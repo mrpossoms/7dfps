@@ -297,6 +297,99 @@ const g = {
 		}
 	},
 
+	animation: {
+		create: function(json)
+		{
+			var frames = [];
+			var tags = {};
+
+			for_each(json.meta.frameTags, (frame_tag) => {
+				tags[frame_tag.name] = [];
+				switch (frame_tag.direction)
+				{
+					case 'forward':
+						for (var i = frame_tag.from; i <= frame_tag.to; ++i)
+						{
+							tags[frame_tag.name].push(i);
+						}
+						break;
+					case 'pingpong':
+						for (var i = frame_tag.from; i <= frame_tag.to; ++i)
+						{
+							tags[frame_tag.name].push(i);
+						}
+						for (var i = frame_tag.to; i >= frame_tag.from; --i)
+						{
+							tags[frame_tag.name].push(i);
+						}
+						break;
+				}
+
+				tag = tags[frame_tag.name];
+			});
+
+			for_each(json.frames, (frame_meta) => {
+				const frame = frame_meta.frame;
+				frames.push({
+					asset: frame_meta.asset,
+					sec: frame_meta.duration / 1000
+				});
+			});
+
+			return function() {
+				this.frame_idx = 0;
+				this.frame_duration = frames[0].sec;
+				this.paused = false;
+				this.speed = 1;
+				this.tag = tag;
+				this.tags = tags;
+				this.queue = [];
+
+				this.current_frame = function()
+				{
+					return frames[this.tag[this.frame_idx]];
+				}
+
+				this.pause = function(pause) { this.paused = pause; }
+
+				this.tick = function(dt)
+				{
+					dt *= this.speed;
+
+					if(!this.paused)
+					while (dt > 0)
+					{
+						const prev_dur = this.frame_duration;
+						this.frame_duration -= dt;
+
+						if (this.frame_duration <= 0)
+						{
+							this.frame_idx++;
+							if (this.frame_idx >= this.tag.length)
+							{
+								if (this.queue.length > 0)
+								{
+									this.tag = this.queue.pop();
+								}
+
+								this.frame_idx = 0;
+							}
+							this.frame_duration = this.current_frame().sec;
+						}
+
+						dt -= prev_dur;
+					}
+				};
+
+				this.set = function(tag)
+				{
+					this.frame_idx = 0;
+					this.tag = this.tags[tag];
+				}
+			};
+		}
+	},
+
 	camera: {
 		create: function()
 		{
@@ -1399,7 +1492,7 @@ Math.ray = function(ray)
 					t = s + q;
 				}
 
-				return ray.position.add(ray.direction.mul(t));
+				return t;
 			}
 		}
 	};

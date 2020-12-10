@@ -132,12 +132,19 @@ const nav = {
 	}
 }
 
-function active_player(state)
+function active_player(state, players_map)
 {
-	let team = ['red', 'blue'][state.turn % 2];
-	let idx = Math.floor(state.turn / 2) % state.teams[team].players.length;		
+	let living_blue = state.teams.blue.living_players(players_map);
+	let living_red = state.teams.red.living_players(players_map);
+	let teams = [];
 
-	return  state.teams[team].players[idx];
+	if (living_blue.length > 0) { teams.push(living_blue); }
+	if (living_red.length > 0) { teams.push(living_red); }
+
+	let team_living = teams[state.turn % teams.length];
+	let idx = Math.floor(state.turn / teams.length) % team_living.length;		
+
+	return team_living[idx];
 }
 
 
@@ -174,7 +181,8 @@ let unit = {
 
 		var cam = g.camera.fps({ collides: cam_colision_check });
 		var type = unit_class || "assault";
-		var hp = game_vars.units[type];
+		const unit_stats = game_vars.units[type];
+		var hp = unit_stats.hp;
 		var action_points = game_vars.player.action_points;
 		cam.friction = 5;
 		cam.forces.push([0, -9, 0]);
@@ -193,7 +201,7 @@ let unit = {
 			},
 			reset: function()
 			{
-				hp = game_vars.units[type];
+				hp = unit_stats.hp;
 				return this;
 			},
 			force: function(force, dt)
@@ -250,6 +258,16 @@ let team = {
 				let idx = players.indexOf(player.id);
 				player.unit.reset().position(spawn_points[idx].add([5, 0, 5]));
 				console.log('player ' + player.id + ' spawned at ' + spawn_points[idx]);
+			},
+			living_players: function(players_map)
+			{
+				return players.reduce((acc, val) => {
+					if (players_map[val].unit.hp() > 0)
+					{
+						return acc.concat(val);
+					}
+					return acc;
+				}, []);
 			}
 			// spawn_units: function()
 			// {
@@ -298,7 +316,7 @@ let projectile_batch = {
 
 		return {
 			accelerations: function() { return accelerations; },
-			update: function(world, dt)
+			update: function(world, players, dt)
 			{
 				for (var i = 0; i < active_projectiles; i++)
 				{
@@ -310,24 +328,54 @@ let projectile_batch = {
 				for (var i = 0; i < active_projectiles; i++)
 				{
 					let p = projectiles[i];
+					let vel_dt = p.vel.mul(dt);
+				
 					for (var j = 0; j < accelerations.length; j++)
 					{
 						p.vel = p.vel.add(accelerations[j].mul(dt));
 					}
 
-					let drag_vec = (p.vel.mul(p.vel).mul(dt * drag));
-					p.vel = p.vel.add(drag);
+					let drag_vec = p.vel.mul(p.vel.dot(p.vel) * dt * drag);
+					p.vel = p.vel.sub(drag_vec);
 
-					let int = world.intersection(p.pos, p.vel.mul(dt));
+					let int = world.intersection(p.pos, vel_dt);
 					if (int)
 					{
 						// p.vel = p.vel.sub(int.normal.mul(int.normal.dot(p.vel) * 2));
 						kill(i);
+						continue;
 					}
-					else
+
+					for (var id in players)
 					{
-						p.pos = p.pos.add(p.vel.mul(dt));
+						if (p.owner == id) { continue; } // don't collide with owner
+						let player = players[id];
+
+						var collided = false;
+						for (var k = 0; k < 2; k++)
+						{
+							let t = Math.ray({position: p.pos, direction: vel_dt}).intersects.sphere(player.unit.position().add([0, k * 10, 0]), 5);
+
+							if (t > 0 && t < 1)
+							{
+								collided = true;
+								break;
+							}	
+						}
+
+						// TODO: do damage to player
+						if (collided)
+						{
+							let dmg = p.vel.len() * p.mass;
+							// console.log('owner ' + p.owner + ' hit ' + id + ' for ' + dmg + ' damage');
+							player.accumulated_damage += dmg;
+							kill(i);							
+						}
 					}
+
+
+
+					p.pos = p.pos.add(vel_dt);
 				}
 			},
 			spawn: function(pos, vel, mass, owner)

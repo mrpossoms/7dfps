@@ -17,6 +17,7 @@ var state = {
             }
         })
     },
+    player_anims: {},
     rx_state: null,
 };
 var my_id = null;
@@ -213,8 +214,35 @@ g.web.on('state').do((s) => {
 
     state.rx_state = s;
 
-    state.me.cam.position(s[my_team].players[my_id].pos.add([0, 12, 0]).sub(level.center_of_mass()));
-    state.me.cam.velocity(s[my_team].players[my_id].vel);
+    for (var team in {red: 0, blue: 0})
+    {
+        for (var pid in s[team].players)
+        {
+            pid = parseInt(pid);
+            if (!state.player_anims[pid])
+            {
+                state.player_anims[pid] = new (g.animation.create({
+                    frames: [
+                        { asset: "voxel/sniper/legs/walk/0", duration: 100 },
+                        { asset: "voxel/sniper/legs/walk/1", duration: 100 },
+                    ],
+                    meta: {
+                        frameTags: [
+                            { name: "walk", from: 0, to: 1, direction: "forward" },
+                        ]
+                    } 
+                }))();
+            }
+        }
+
+    }
+
+    if (my_team != "spectator")
+    {
+        state.me.cam.position(s[my_team].players[my_id].pos.add([0, 12, 0]).sub(level.center_of_mass()));
+        state.me.cam.velocity(s[my_team].players[my_id].vel);        
+    }
+
 });
 
 g.web.on('selected').do((int) => {
@@ -365,20 +393,43 @@ const draw_scene = (camera, shader) => {
         for (var id in team.players)
         {
             const p = team.players[id];
-            const model = [].quat_rotation([0, 1, 0], 3.1415-p.angs[0]).quat_to_matrix().mat_mul([].translate(p.pos.add([0, 7, 0]).sub(level.center_of_mass())));
+            let rot_scale = [].quat_rotation([0, 1, 0], 3.1415-p.angs[0]).quat_to_matrix().mat_mul([].scale(0.20));
+            
+            { // draw legs
+                const model = rot_scale.mat_mul([].translate(p.pos.add([0, 4, 0]).sub(level.center_of_mass())));
+                const asset = state.player_anims[id].current_frame().asset;
 
-            g.web.assets['voxel/assault/legs/0'].using_shader(shader || 'basic_colored')
-            .with_attribute({name:'a_position', buffer: 'positions', components: 3})
-            .with_attribute({name:'a_normal', buffer: 'normals', components: 3})
-            .with_attribute({name:'a_color', buffer: 'colors', components: 3})
-            .with_camera(camera)
-            .set_uniform('u_model').mat4(model)
-            .set_uniform('u_shadow_map').texture(shadow_map.depth_attachment)
-            .set_uniform('u_light_view').mat4(light.view())
-            .set_uniform('u_light_proj').mat4(light.projection())
-            .set_uniform('u_light_diffuse').vec3([1, 1, 1])
-            .set_uniform('u_light_ambient').vec3([135/255, 206/255, 235/255].mul(0.1))
-            .draw_tris();
+                g.web.assets[asset].using_shader(shader || 'basic_colored')
+                .with_attribute({name:'a_position', buffer: 'positions', components: 3})
+                .with_attribute({name:'a_normal', buffer: 'normals', components: 3})
+                .with_attribute({name:'a_color', buffer: 'colors', components: 3})
+                .with_camera(camera)
+                .set_uniform('u_model').mat4(model)
+                .set_uniform('u_shadow_map').texture(shadow_map.depth_attachment)
+                .set_uniform('u_light_view').mat4(light.view())
+                .set_uniform('u_light_proj').mat4(light.projection())
+                .set_uniform('u_light_diffuse').vec3([1, 1, 1])
+                .set_uniform('u_light_ambient').vec3([135/255, 206/255, 235/255].mul(0.1))
+                .draw_tris();                
+            }
+
+            { // draw head
+                rot_scale = [].quat_rotation([1, 0, 0], p.angs[1]).quat_to_matrix().mat_mul(rot_scale);
+                const model = rot_scale.mat_mul([].translate(p.pos.add([0, 9, 0]).sub(level.center_of_mass())));
+                g.web.assets['voxel/sniper/head/0'].using_shader(shader || 'basic_colored')
+                .with_attribute({name:'a_position', buffer: 'positions', components: 3})
+                .with_attribute({name:'a_normal', buffer: 'normals', components: 3})
+                .with_attribute({name:'a_color', buffer: 'colors', components: 3})
+                .with_camera(camera)
+                .set_uniform('u_model').mat4(model)
+                .set_uniform('u_shadow_map').texture(shadow_map.depth_attachment)
+                .set_uniform('u_light_view').mat4(light.view())
+                .set_uniform('u_light_proj').mat4(light.projection())
+                .set_uniform('u_light_diffuse').vec3([1, 1, 1])
+                .set_uniform('u_light_ambient').vec3([135/255, 206/255, 235/255].mul(0.1))
+                .draw_tris();
+            }
+
         }
         // if ('depth_only' != shader)
         // if (id == my_id) { continue; }

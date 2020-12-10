@@ -41,7 +41,7 @@ module.exports.server = {
 		};
 
 		state.projectiles = _7d.projectile_batch.create(100, 0.0);
-		state.projectiles.accelerations().push([0, -9, 0]);
+		state.projectiles.accelerations().push([0, -9.8, 0]);
 
 		{ // load level
 			const path = level_str;
@@ -84,6 +84,7 @@ module.exports.server = {
 			player.shooting = false;
 			player.shot_cooldown = 0;
 			player.time_shooting = 0;
+			player.accumulated_damage = 0;
 
 			player.is_my_turn = function()
 			{
@@ -123,6 +124,7 @@ module.exports.server = {
 			player.emit('team', player.team);
 
 			player.on('do_move', () => {
+				if (player.unit.hp() <= 0) { return; }
 				if (!player.is_my_turn()) { return; }
 				if (player.moves.length > 0) { return; }
 				if (!player.nav || !player.nav.path) { return; }
@@ -133,18 +135,23 @@ module.exports.server = {
 			});
 
 			player.on('trigger_down', () => {
+				if (player.unit.hp() <= 0) { return; }
+
 				player.shooting = true;
 				player.time_shooting = 0;
 				console.log('player ' + player.id +' starts shooting');
 			});
 
 			player.on('trigger_up', () => {
+				if (player.unit.hp() <= 0) { return; }
+
 				player.shooting = false;
 				player.shot_cooldown = 0;
 				console.log('player ' + player.id +' stops shooting');
 			});
 
 			player.on('angles', (pitch_yaw) => {
+				if (player.unit.hp() <= 0) { return; }
 				// if (isNaN(pitch_yaw[0]) || isNaN(pitch_yaw[1])) { return; }  
 				player.unit.angles(pitch_yaw[1], pitch_yaw[0]);
 				// If the player is moving, don't update nav grid stuff
@@ -213,6 +220,9 @@ module.exports.server = {
 
 		update: function(player, state, dt)
 		{
+			// don't update the player if they are dead
+			if (player.hp <= 0) { return; }
+
 			if (player.moves && player.moves.length > 0)
 			{
 				// console.log('dest ' + player.moves[0]);
@@ -255,11 +265,33 @@ module.exports.server = {
 					let yaw_sp = [].quat_rotation([0, 1, 0], Math.random.uni() * (sb_yaw + proj_stats.spread_yaw_deg_sec * player.time_shooting));
 					let pitch_sp = [].quat_rotation([1, 0, 0], Math.random.uni() * (sb_pitch + proj_stats.spread_pitch_deg_sec * player.time_shooting));
 					let sp_q = pitch_sp.quat_mul(yaw_sp);
-					state.projectiles.spawn(player.unit.eyes(), sp_q.quat_rotate_vector(player.unit.forward().mul(proj_vel)));
+					state.projectiles.spawn(
+						player.unit.eyes(), // position
+						sp_q.quat_rotate_vector(player.unit.forward().mul(proj_vel)), // velocity
+						proj_stats.mass, // mass
+						player.id // owner
+					);
 					player.shot_cooldown = 1.0 / unit_vars.weapon.rounds_sec;
 
 					player.time_shooting += dt;
 				}
+			}
+
+			if (player.accumulated_damage)
+			{ // handle accumulated player damage here
+				let last_hp = player.unit.hp();
+
+				player.unit.hp(last_hp - player.accumulated_damage);
+				console.log('player: ' + player.id + ' took ' + player.accumulated_damage + ' damage, new hp ' + player.unit.hp());
+
+				if (last_hp > 0 && player.unit.hp() <= 0)
+				{ // Player was killed
+					console.log('player: ' + player.id + ' was killed');
+					player.emit('killed');
+					player.emit('team', 'spectator');
+				}
+
+				player.accumulated_damage = 0;
 			}
 
 			player.shot_cooldown -= dt;
@@ -288,30 +320,37 @@ module.exports.server = {
 	update: function(players, state, dt)
 	{
 		if (state.teams['red'].players.length * state.teams['blue'].players.length == 0) { return; }
-		state.projectiles.update(state.world, dt);
+		state.projectiles.update(state.world, players, dt);
 		// console.log('projectiles: ' + state.projectiles.active().length);
 
-		if (state.last_turn != state.turn)
-		{
-			let next_player = players[_7d.active_player(state)];
-			next_player.emit('your_turn');
+		{ // Handle turn expiration here
+			if (state.last_turn != state.turn)
+			{
+				let next_player = players[_7d.active_player(state, players)];
+				next_player.emit('your_turn');
 
-			next_player.nav = _7d.nav.choices(
-				state.nav_grid,
-				next_player.unit.position().add([0, 1, 0]),
-				next_player.unit.action_points()
-			);
-			next_player.emit('nav', next_player.nav);
+				next_player.nav = _7d.nav.choices(
+					state.nav_grid,
+					next_player.unit.position().add([0, 1, 0]),
+					next_player.unit.action_points()
+				);
+				next_player.emit('nav', next_player.nav);
 
-			state.turn_time = vars.player.turn_sec;
+				state.turn_time = vars.player.turn_sec;
+			}
+
+			state.last_turn = state.turn;
+			state.turn_time -= dt;
+			if (state.turn_time <= 0)
+			{
+				console.log('active ' + _7d.active_player(state, players));
+				players[_7d.active_player(state, players)].emit('nav', {choices: [], path: null});
+				state.turn += 1; 
+			}
 		}
 
-		state.last_turn = state.turn;
-		state.turn_time -= dt;
-		if (state.turn_time <= 0)
-		{
-			players[_7d.active_player(state)].emit('nav', {choices: [], path: null});
-			state.turn += 1; 
+		{ // player projectile collisions
+
 		}
 	},
 
