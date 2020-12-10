@@ -217,13 +217,14 @@ g.web.on('state').do((s) => {
     {
         for (var pid in s[team].players)
         {
+            let p = s[team].players[pid];
             pid = parseInt(pid);
             if (!state.player_anims[pid])
             {
                 state.player_anims[pid] = new (g.animation.create({
                     frames: [
-                        { asset: "voxel/sniper/legs/walk/0", duration: 333 },
-                        { asset: "voxel/sniper/legs/walk/1", duration: 333 },
+                        { asset: "voxel/" + p.type + "/legs/walk/0", duration: 333 },
+                        { asset: "voxel/" + p.type + "/legs/walk/1", duration: 333 },
                     ],
                     meta: {
                         frameTags: [
@@ -236,12 +237,6 @@ g.web.on('state').do((s) => {
             }
         }
 
-    }
-
-    if (my_team != "spectator")
-    {
-        state.me.cam.position(s[my_team].players[my_id].pos.add([0, 12, 0]).sub(level.center_of_mass()));
-        state.me.cam.velocity(s[my_team].players[my_id].vel);        
     }
 
 });
@@ -258,6 +253,7 @@ g.web.on('your_turn').do(() => {
 g.update(function (dt)
 {
     var vec = [0, 0];
+    let level = g.web.assets[level_str];
 
     state.me.cam.update(dt);
 
@@ -299,6 +295,12 @@ g.update(function (dt)
 
             } break;
         }
+    }
+
+    if (my_team != "spectator")
+    {
+        state.me.cam.position(state.rx_state[my_team].players[my_id].pos.add([0, 12, 0]).sub(level.center_of_mass()));
+        state.me.cam.velocity(state.rx_state[my_team].players[my_id].vel);        
     }
 
     for (var team_name in state.rx_state)
@@ -454,7 +456,7 @@ const draw_scene = (camera, shader) => {
             { // draw head
                 rot_scale = [].quat_rotation([1, 0, 0], angs[1]).quat_to_matrix().mat_mul(rot_scale);
                 const model = rot_scale.mat_mul([].translate(p.pos.add([0, 9, 0]).sub(level.center_of_mass())));
-                g.web.assets['voxel/sniper/head/0'].using_shader(shader || 'basic_colored')
+                g.web.assets['voxel/' + p.type + '/head/0'].using_shader(shader || 'basic_colored')
                 .with_attribute({name:'a_position', buffer: 'positions', components: 3})
                 .with_attribute({name:'a_normal', buffer: 'normals', components: 3})
                 .with_attribute({name:'a_color', buffer: 'colors', components: 3})

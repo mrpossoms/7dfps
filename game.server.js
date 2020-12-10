@@ -72,7 +72,7 @@ module.exports.server = {
 
 	// handlers for all player connection events
 	player: {
-		connected: function(player, state)
+		connected: function(player, state, players)
 		{
 			console.log('player: ' + player.id + ' connected');
 
@@ -88,14 +88,15 @@ module.exports.server = {
 
 			player.is_my_turn = function()
 			{
-				let team = ['red', 'blue'][state.turn % 2];
-				if (team == player.team)
-				{
-					let idx = Math.floor(state.turn / 2) % state.teams[team].players.length;
-					return state.teams[team].players.indexOf(player.id) == idx;
-				}
+				// let team = ['red', 'blue'][state.turn % 2];
+				// if (team == player.team)
+				// {
+				// 	let idx = Math.floor(state.turn / 2) % state.teams[team].players.length;
+				// 	return state.teams[team].players.indexOf(player.id) == idx;
+				// }
+				// return false;
 
-				return false;
+				return player.id == _7d.active_player(state, players);
 			}
 
 			let red_team = state.teams.red;
@@ -203,19 +204,10 @@ module.exports.server = {
 						
 					}
 					
-
-					
-
 					player.last_target = nav_int.point;
 				}
 			});
 
-			// player.on('jump', () => {
-			// 	if (!player.cam.is_airborn())
-			// 	{
-			// 		player.cam.velocity(player.cam.velocity().add([0, 6, 0]));
-			// 	}
-			// });
 		},
 
 		update: function(player, state, dt)
@@ -262,18 +254,21 @@ module.exports.server = {
 					let sb_pitch = proj_stats.spread_pitch_base * 3.1415/180;
 					let proj_vel = proj_stats.velocity_unit_sec;
 
-					let yaw_sp = [].quat_rotation([0, 1, 0], Math.random.uni() * (sb_yaw + proj_stats.spread_yaw_deg_sec * player.time_shooting));
-					let pitch_sp = [].quat_rotation([1, 0, 0], Math.random.uni() * (sb_pitch + proj_stats.spread_pitch_deg_sec * player.time_shooting));
-					let sp_q = pitch_sp.quat_mul(yaw_sp);
-					state.projectiles.spawn(
-						player.unit.eyes(), // position
-						sp_q.quat_rotate_vector(player.unit.forward().mul(proj_vel)), // velocity
-						proj_stats.mass, // mass
-						player.id // owner
-					);
-					player.shot_cooldown = 1.0 / unit_vars.weapon.rounds_sec;
+					for (var i = 0; i < proj_stats.count; i ++)
+					{
+						let yaw_sp = [].quat_rotation([0, 1, 0], Math.random.uni() * (sb_yaw + proj_stats.spread_yaw_deg_sec * player.time_shooting));
+						let pitch_sp = [].quat_rotation([1, 0, 0], Math.random.uni() * (sb_pitch + proj_stats.spread_pitch_deg_sec * player.time_shooting));
+						let sp_q = pitch_sp.quat_mul(yaw_sp);
+						state.projectiles.spawn(
+							player.unit.eyes(), // position
+							sp_q.quat_rotate_vector(player.unit.forward().mul(proj_vel)), // velocity
+							proj_stats.mass, // mass
+							player.id // owner
+						);
+						player.shot_cooldown = 1.0 / unit_vars.weapon.rounds_sec;
 
-					player.time_shooting += dt;
+						player.time_shooting += dt;
+					}
 				}
 			}
 
@@ -286,6 +281,7 @@ module.exports.server = {
 
 				if (last_hp > 0 && player.unit.hp() <= 0)
 				{ // Player was killed
+					player.shooting = false;
 					console.log('player: ' + player.id + ' was killed');
 					player.emit('killed');
 					player.emit('team', 'spectator');
@@ -319,8 +315,9 @@ module.exports.server = {
 	// main game loop
 	update: function(players, state, dt)
 	{
-		if (state.teams['red'].players.length * state.teams['blue'].players.length == 0) { return; }
 		state.projectiles.update(state.world, players, dt);
+
+		if (state.teams['red'].players.length * state.teams['blue'].players.length == 0) { return; }
 		// console.log('projectiles: ' + state.projectiles.active().length);
 
 		{ // Handle turn expiration here
@@ -343,14 +340,11 @@ module.exports.server = {
 			state.turn_time -= dt;
 			if (state.turn_time <= 0)
 			{
-				console.log('active ' + _7d.active_player(state, players));
-				players[_7d.active_player(state, players)].emit('nav', {choices: [], path: null});
+				let active_player = _7d.active_player(state, players);
+				console.log('active ' + active_player + ' hp: ' + players[active_player].unit.hp());
+				players[active_player].emit('nav', {choices: [], path: null});
 				state.turn += 1; 
 			}
-		}
-
-		{ // player projectile collisions
-
 		}
 	},
 
@@ -376,7 +370,7 @@ module.exports.server = {
 			{
 				let unit = players[team.players[i]].unit;
 				tx_state[team_name].players[team.players[i]] = {
-					type: unit.type,
+					type: unit.type(),
 					pos: unit.position(),
 					vel: unit.velocity(),
 					angs: unit.angles()

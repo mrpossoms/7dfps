@@ -89,7 +89,7 @@ io.on('connection', function(player) {
 	player.id = player_id;
 	game.server.players[player_id] = player;
 
-	game.server.player.connected(player, game.server.state);
+	game.server.player.connected(player, game.server.state, game.server.players);
 
 	player.on('disconnect', function() {
 		game.server.player.disconnected(player, game.server.state);
