@@ -436,8 +436,8 @@ const draw_scene = (camera, shader) => {
 
             if (id == state.me.id && state.me.team != "spectator")
             {
-                // angs[0] = state.me.cam.yaw();
-                // angs[1] = state.me.cam.pitch();
+                angs[0] = state.me.cam.yaw();
+                angs[1] = state.me.cam.pitch();
             }
 
             let rot_scale = [].quat_rotation([0, 1, 0], 3.1415-angs[0]).quat_to_matrix().mat_mul([].scale(0.20));
