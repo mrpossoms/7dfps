@@ -18,6 +18,8 @@ module.exports.server = {
 		turn: 0,
 		last_turn: 0,
 		turn_time: 0,
+		game_state: "normal",
+		reset_timer: 0
 	},
 
 	// server initialization goes here
@@ -36,8 +38,8 @@ module.exports.server = {
 		}
 
 		state.teams = {
-			red: _7d.team.create(state, vars),
-			blue: _7d.team.create(state, vars),
+			red: _7d.team.create(state, vars, 'red'),
+			blue: _7d.team.create(state, vars, 'blue'),
 		};
 
 		state.projectiles = _7d.projectile_batch.create(100, 0.0);
@@ -88,14 +90,6 @@ module.exports.server = {
 
 			player.is_my_turn = function()
 			{
-				// let team = ['red', 'blue'][state.turn % 2];
-				// if (team == player.team)
-				// {
-				// 	let idx = Math.floor(state.turn / 2) % state.teams[team].players.length;
-				// 	return state.teams[team].players.indexOf(player.id) == idx;
-				// }
-				// return false;
-
 				return player.id == _7d.active_player(state, players);
 			}
 
@@ -125,6 +119,7 @@ module.exports.server = {
 			// player.emit('team', player.team);
 
 			player.on('do_move', () => {
+				if (state.game_state != 'normal') { return; }
 				if (player.unit.hp() <= 0) { return; }
 				if (!player.is_my_turn()) { return; }
 				if (player.moves.length > 0) { return; }
@@ -326,52 +321,70 @@ module.exports.server = {
 		if (state.teams['red'].players.length + state.teams['blue'].players.length == 0) { return; }
 		// console.log('projectiles: ' + state.projectiles.active().length);
 
-		{ // Handle turn expiration here
-			if (state.last_turn != state.turn)
-			{
-				let active_player = _7d.active_player(state, players);
-				if (null != active_player)
+		switch(state.game_state)
+		{
+			case 'normal':
+			{ // Handle turn expiration here
+				if (state.last_turn != state.turn)
 				{
-					let next_player = players[active_player];
-					next_player.unit.reload();
-					next_player.emit('your_turn');
+					let active_player = _7d.active_player(state, players);
+					if (null != active_player)
+					{
+						let next_player = players[active_player];
+						next_player.unit.reload();
+						next_player.emit('your_turn');
 
-					next_player.nav = _7d.nav.choices(
-						state.nav_grid,
-						next_player.unit.position().add([0, 1, 0]),
-						next_player.unit.action_points()
-					);
-					next_player.emit('nav', next_player.nav);
+						next_player.nav = _7d.nav.choices(
+							state.nav_grid,
+							next_player.unit.position().add([0, 1, 0]),
+							next_player.unit.action_points()
+						);
+						next_player.emit('nav', next_player.nav);
 
-					state.turn_time = vars.player.turn_sec;
+						state.turn_time = vars.player.turn_sec;
+					}
+				}
+
+				state.last_turn = state.turn;
+				state.turn_time -= dt;
+				if (state.turn_time <= 0)
+				{
+					let active_player = _7d.active_player(state, players);
+
+					if (null != active_player)
+					{
+						console.log('active ' + active_player + ' hp: ' + players[active_player].unit.hp());
+						players[active_player].emit('nav', {choices: [], path: null});
+						state.turn += 1; 
+					}
 				}
 			}
 
-			state.last_turn = state.turn;
-			state.turn_time -= dt;
-			if (state.turn_time <= 0)
-			{
-				let active_player = _7d.active_player(state, players);
-
-				if (null != active_player)
+			// if (state.teams['red'].players.length + state.teams['blue'].players.length > 0)
+			{ // Look for game over condition
+				if (state.teams.red.living_players(players).length == 0 && state.teams.red.players.length > 0)
 				{
-					console.log('active ' + active_player + ' hp: ' + players[active_player].unit.hp());
-					players[active_player].emit('nav', {choices: [], path: null});
-					state.turn += 1; 
+					console.log('Blue team wins');
+					state.game_state = "finished";
+					state.reset_timer = 5;
+				}
+				if (state.teams.blue.living_players(players).length == 0 && state.teams.blue.players.length > 0)
+				{
+					console.log('Red team wins');
+					state.game_state = "finished";
+					state.reset_timer = 5;
 				}
 			}
-		}
-
-		// if (state.teams['red'].players.length + state.teams['blue'].players.length > 0)
-		{ // Look for game over condition
-			if (state.teams.red.living_players(players).length == 0 && state.teams.red.players.length > 0)
+			break;
+			case 'finished':
+			state.reset_timer -= dt;
+			if (state.reset_timer < 0)
 			{
-				console.log('Blue team wins');
+				state.teams.red.reset(players);
+				state.teams.blue.reset(players);
+				state.game_state = 'normal';
 			}
-			if (state.teams.blue.living_players(players).length == 0 && state.teams.blue.players.length > 0)
-			{
-				console.log('Red team wins');
-			}
+			break;
 		}
 	},
 

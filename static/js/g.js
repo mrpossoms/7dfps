@@ -603,6 +603,18 @@ const g = {
 				}
 
 				yaw += d_yaw;
+
+				const pos = cam.position();
+
+				const qx = [].quat_rotation([1, 0, 0], pitch);
+				const qy = [].quat_rotation([0, 1, 0], yaw);
+				const q = cam._q = qy.quat_mul(qx)
+
+				const up = q.quat_rotate_vector([0, 1, 0]);
+				const forward = q.quat_rotate_vector([0, 0, -1]);
+				// cam._left = cam._q.quat_rotate_vector([-1, 0, 0]));
+
+				cam.view(pos, forward, up);
 			};
 
 			cam.pitch = (p) => {
@@ -612,11 +624,15 @@ const g = {
 
 					const qx = [].quat_rotation([1, 0, 0], pitch);
 					const qy = [].quat_rotation([0, 1, 0], yaw);
-					const q = cam._q = qy.quat_mul(qx)
+					const q = qx.quat_mul(qy);
 
-					// const up = q.quat_rotate_vector([0, 1, 0]);
-					const forward = q.quat_rotate_vector([0, 0, 1]);
-					cam.forward(forward);
+					let up = qx.quat_rotate_vector([0, 1, 0]);
+					up = qy.quat_rotate_vector(up);
+
+					let forward = qx.quat_rotate_vector([0, 0, 1]);
+					forward = qy.quat_rotate_vector(forward);
+
+					cam.view(cam.position(), forward, up);
 				}
 				return pitch;
 			};
@@ -628,9 +644,9 @@ const g = {
 
 					const qx = [].quat_rotation([1, 0, 0], pitch);
 					const qy = [].quat_rotation([0, 1, 0], yaw);
-					const q = cam._q = qy.quat_mul(qx)
+					const q = qx.quat_mul(qy)
 
-					// const up = q.quat_rotate_vector([0, 1, 0]);
+					const up = q.quat_rotate_vector([0, 1, 0]);
 					const forward = q.quat_rotate_vector([0, 0, 1]);
 					cam.forward(forward);
 				}

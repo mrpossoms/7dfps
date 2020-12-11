@@ -254,7 +254,7 @@ let unit = {
 }
 
 let team = {
-	create: function(state, game_vars)
+	create: function(state, game_vars, name)
 	{
 		var spawn_points = [];
 		var players = [];
@@ -264,20 +264,22 @@ let team = {
 		// 	let u = unit.create(state, game_vars, unit_class);
 		// 	units.push(u);
 		// }
+		let spawn_player = function(player) {
+			let idx = players.indexOf(player.id);
+			let unit_class = ['assault', 'sniper', 'shotgun'][idx % 3];
+			let class_stats = game_vars.units[unit_class];
+			player.team = name;
+			player.unit.reset().position(spawn_points[idx].add([5, 0, 5]));
+			player.unit.type(unit_class);
+			player.unit.hp(class_stats.hp);
+			console.log('player ' + player.id + ' spawned as ' + unit_class + ' at ' + spawn_points[idx]);
+		};
 
 		return {
 			// units: units,
 			players: players,
 			spawn_points: spawn_points,
-			spawn_player: function(player) {
-				let idx = players.indexOf(player.id);
-				let unit_class = ['assault', 'sniper', 'shotgun'][idx % 3];
-				let class_stats = game_vars.units[unit_class];
-				player.unit.reset().position(spawn_points[idx].add([5, 0, 5]));
-				player.unit.type(unit_class);
-				player.unit.hp(class_stats.hp);
-				console.log('player ' + player.id + ' spawned as ' + unit_class + ' at ' + spawn_points[idx]);
-			},
+			spawn_player: spawn_player,
 			living_players: function(players_map)
 			{
 				return players.reduce((acc, val) => {
@@ -287,14 +289,16 @@ let team = {
 					}
 					return acc;
 				}, []);
+			},
+			reset: function(players_map)
+			{
+				let idx = 0;
+				for (var i = 0; i < players.length; i++)
+				{
+					let p = players_map[players[i]];
+					spawn_player(p);		
+				}
 			}
-			// spawn_units: function()
-			// {
-			// 	for (var i = 0; i < spawn_points.length; i++)
-			// 	{
-			// 		units[i].reset().position(spawn_points[i].sub(state.world.center_of_mass()));
-			// 	}
-			// }
 		};
 	}
 };

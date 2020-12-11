@@ -25,7 +25,7 @@ var state = {
 state.me.cam.position([0, 20, 0]);
 // cam.forces.push([0, -9, 0]);
 state.me.cam.mass = 0.1;
-state.me.cam.force = 1000;
+state.me.cam.force = 500;
 state.me.crouching = false;
 // cam.friction = 5;
 
@@ -176,7 +176,7 @@ g.initialize(function ()
 g.web.pointer.on_move(function (event)
 {
     let cam = state.me.cam;
-    cam.tilt(event.movementY / 100, event.movementX / 100);
+    cam.tilt(event.movementY / 200, event.movementX / 200); 
 
     g.web.signal('angles', [cam.pitch(), cam.yaw()]);
 });
@@ -269,7 +269,10 @@ g.update(function (dt)
     var vec = [0, 0];
     let level = g.web.assets[level_str];
 
-    state.me.cam.update(dt);
+    if (state.me.team == 'spectator')
+    {
+        state.me.cam.update(dt);
+    }
 
     step_cool -= dt;
 
@@ -358,18 +361,20 @@ var t = 0;
 
 const draw_scene = (camera, shader) => {
 
+    const ambient_light = [255/255, 106/255, 135/255].mul(0.6);
+
     g.web.assets['voxel/skybox']
         .using_shader(shader || 'basic_colored')
         .with_attribute({name:'a_position', buffer: 'positions', components: 3})
         .with_attribute({name:'a_normal', buffer: 'normals', components: 3})
         .with_attribute({name:'a_color', buffer: 'colors', components: 3})
         .with_camera(camera)
-        .set_uniform('u_model').mat4([].scale(10).mat_mul([].translate([0, 200, 0])))
+        .set_uniform('u_model').mat4([].scale(20).mat_mul([].translate([0, 200, 0])))
         .set_uniform('u_shadow_map').texture(shadow_map.depth_attachment)
         .set_uniform('u_light_view').mat4(light.view())
         .set_uniform('u_light_proj').mat4(light.projection())
         .set_uniform('u_light_diffuse').vec3([0.9, 0.7, 0.5])
-        .set_uniform('u_light_ambient').vec3([255/255, 106/255, 135/255].mul(0.4))
+        .set_uniform('u_light_ambient').vec3(ambient_light)
         .draw_tris();
 
     let level = g.web.assets[level_str];
@@ -383,7 +388,7 @@ const draw_scene = (camera, shader) => {
         .set_uniform('u_light_view').mat4(light.view())
         .set_uniform('u_light_proj').mat4(light.projection())
         .set_uniform('u_light_diffuse').vec3([0.9, 0.7, 0.5])
-        .set_uniform('u_light_ambient').vec3([255/255, 106/255, 135/255].mul(0.4))
+        .set_uniform('u_light_ambient').vec3(ambient_light)
         .draw_tris();
 
     // g.web.assets[level_str].using_shader('depth_only')
@@ -470,7 +475,7 @@ const draw_scene = (camera, shader) => {
                 .set_uniform('u_light_view').mat4(light.view())
                 .set_uniform('u_light_proj').mat4(light.projection())
                 .set_uniform('u_light_diffuse').vec3([1, 1, 1])
-                .set_uniform('u_light_ambient').vec3([135/255, 206/255, 235/255].mul(0.1))
+                .set_uniform('u_light_ambient').vec3(ambient_light)
                 .draw_tris();                
             }
 
@@ -496,7 +501,7 @@ const draw_scene = (camera, shader) => {
                 .set_uniform('u_light_view').mat4(light.view())
                 .set_uniform('u_light_proj').mat4(light.projection())
                 .set_uniform('u_light_diffuse').vec3([1, 1, 1])
-                .set_uniform('u_light_ambient').vec3([135/255, 206/255, 235/255].mul(0.1))
+                .set_uniform('u_light_ambient').vec3(ambient_light)
                 .draw_tris();
             }
 
@@ -513,7 +518,6 @@ const draw_scene = (camera, shader) => {
 
         let me = state.rx_state[state.me.team].players[state.me.id];
 
-        // gl.enable(gl.BLEND);
         gl.disable(gl.DEPTH_TEST);
         g.web.assets['mesh/plane'].using_shader('basic_textured')
         .with_attribute({name:'a_position', buffer:'positions', components: 3})
@@ -539,6 +543,6 @@ g.web.draw(function (dt)
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
     // draw_scene(light.orthographic(180, 180));
-    draw_scene(state.me.cam.perspective(Math.PI / 2, 0.1, 2000));
+    draw_scene(state.me.cam.perspective(Math.PI / 2, 0.1, 3000));
 });
 
