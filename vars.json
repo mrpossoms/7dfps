@@ -55,13 +55,13 @@
 		 },
 		 "weapon":{
 			"rounds_sec":1,
-			"capacity":3,
+			"capacity":5,
 			"projectile":{
 			   "count":5,
 			   "mass":0.1,
-			   "velocity_unit_sec":250,
-			   "spread_yaw_base":5,
-			   "spread_pitch_base":5,
+			   "velocity_unit_sec":200,
+			   "spread_yaw_base":1.5,
+			   "spread_pitch_base":1.5,
 			   "spread_yaw_deg_sec":5,
 			   "spread_pitch_deg_sec":5,
 			   "spread_cool_deg_sec":2

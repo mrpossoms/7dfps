@@ -19,7 +19,8 @@ module.exports.server = {
 		last_turn: 0,
 		turn_time: 0,
 		game_state: "normal",
-		reset_timer: 0
+		reset_timer: 0,
+		round: 1
 	},
 
 	// server initialization goes here
@@ -383,6 +384,7 @@ module.exports.server = {
 				state.teams.red.reset(players);
 				state.teams.blue.reset(players);
 				state.game_state = 'normal';
+				state.round += 1;
 			}
 			break;
 		}
@@ -399,6 +401,7 @@ module.exports.server = {
 				players: {}
 			},
 			projectiles: state.projectiles.active(),
+			impacts: state.projectiles.impacts(),
 			turn: state.turn
 		};
 
@@ -416,7 +419,7 @@ module.exports.server = {
 					vel: unit.velocity(),
 					angs: unit.angles(),
 					hp: unit.hp(),
-					crouch: unit.crouching()
+					crouch: unit.crouching(),
 				};
 			}
 		}
@@ -428,6 +431,7 @@ module.exports.server = {
 			tx_state.my_id = id;
 			tx_state.my_team = player.team;
 			tx_state.my_ammo = player.unit.ammo();
+			tx_state.turn = _7d.active_player(state, players);
 			player.emit('state', tx_state);
 		}
 	}

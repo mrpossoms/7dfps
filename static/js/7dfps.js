@@ -205,7 +205,8 @@ let unit = {
 			},
 			reset: function()
 			{
-				hp = unit_stats.hp;
+				ammo = game_vars.units[type].weapon.capacity;
+				hp = game_vars.units[type].hp;
 				return this;
 			},
 			force: function(force, dt)
@@ -239,7 +240,7 @@ let unit = {
 			crouching: function(c) { if (c != undefined) { crouching = c; } return crouching;},
 			reload: function()
 			{
-				ammo = unit_stats.weapon.capacity;
+				ammo = game_vars.units[type].weapon.capacity;
 			},
 			position: function(pos) { return cam.position(pos); },
 			eyes: function() { return cam.position().add([0, 12 * (crouching ? (25/39) : 1), 0]); },
@@ -258,6 +259,7 @@ let team = {
 	{
 		var spawn_points = [];
 		var players = [];
+		var unit_idx_offset = parseInt(Math.random() * 3);
 		// // create one unit for each class
 		// for (var unit_class in game_vars.units)
 		// {
@@ -265,14 +267,15 @@ let team = {
 		// 	units.push(u);
 		// }
 		let spawn_player = function(player) {
-			let idx = players.indexOf(player.id);
+			if (!player) { return; }
+			let idx = players.indexOf(player.id) + unit_idx_offset + state.round;
 			let unit_class = ['assault', 'sniper', 'shotgun'][idx % 3];
 			let class_stats = game_vars.units[unit_class];
 			player.team = name;
-			player.unit.reset().position(spawn_points[idx].add([5, 0, 5]));
+			player.unit.reset().position(spawn_points[idx % spawn_points.length].add([5, 0, 5]));
 			player.unit.type(unit_class);
 			player.unit.hp(class_stats.hp);
-			console.log('player ' + player.id + ' spawned as ' + unit_class + ' at ' + spawn_points[idx]);
+			console.log('player ' + player.id + ' spawned as ' + unit_class + ' at ' + spawn_points[idx % spawn_points.length]);
 		};
 
 		return {
@@ -309,6 +312,7 @@ let projectile_batch = {
 		var projectiles = [];
 		var accelerations = [];
 		var drag = drag || 0;
+		var impacts = [];
 
 		var active_projectiles = 0;
 
@@ -366,6 +370,7 @@ let projectile_batch = {
 					{
 						// p.vel = p.vel.sub(int.normal.mul(int.normal.dot(p.vel) * 2));
 						kill(i);
+						impacts.push(int.point);
 						continue;
 					}
 
@@ -383,6 +388,7 @@ let projectile_batch = {
 							if (t > 0 && t < 1)
 							{
 								collided = true;
+								impacts.push(p.pos.add(vel_dt.mul(t)));
 								break;
 							}	
 						}
@@ -393,7 +399,7 @@ let projectile_batch = {
 							let dmg = p.vel.len() * p.mass;
 							// console.log('owner ' + p.owner + ' hit ' + id + ' for ' + dmg + ' damage');
 							player.accumulated_damage += dmg;
-							kill(i);							
+							kill(i);
 						}
 					}
 
@@ -418,7 +424,8 @@ let projectile_batch = {
 			active: function()
 			{
 				return projectiles.slice(0, active_projectiles);
-			}
+			},
+			impacts: function() { let out = impacts.slice(); impacts = []; return out; }
 		}
 	}
 };

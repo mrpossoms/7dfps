@@ -135,6 +135,12 @@ g.initialize(function ()
             g.web.assets['shaders/nav_point.frag']
         );
 
+        g.web.gfx.shader.create('color',
+            g.web.assets['shaders/color.vert'],
+            g.web.assets['shaders/color.frag']
+        );
+
+
         g.web.assets['mesh/plane'] = g.web.gfx.mesh.plane();
 
         for (var i = 0; i < 5; i++)
@@ -310,7 +316,7 @@ g.update(function (dt)
         }
     }
 
-    for (var team_name in state.rx_state)
+    for (var team_name in {red: true, blue: true})
     {
         let team = state.rx_state[team_name];
         for (var id in team.players)
@@ -421,6 +427,7 @@ const draw_scene = (camera, shader) => {
         .draw_line_strip();
     }
 
+    // Draw bullets
     for (var i = 0; i < state.rx_state.projectiles.length; i++)
     {
         let p = state.rx_state.projectiles[i];
@@ -432,7 +439,21 @@ const draw_scene = (camera, shader) => {
         .draw_points();
     }
 
-    for (var team_name in state.rx_state)
+    // Draw impacts
+    if (!shader)
+    for (var i = 0; i < state.rx_state.impacts.length; i++)
+    {
+        let p = state.rx_state.impacts[i];
+        if (!p) { break; }
+        g.web.assets['voxel/impact'].using_shader(shader || 'color')
+        .with_attribute({name:'a_position', buffer: 'positions', components: 3})
+        .with_attribute({name:'a_color', buffer: 'colors', components: 3})
+        .with_camera(camera)
+        .set_uniform('u_model').mat4([].rotation(Math.random.unit_vector(), 1).mat_mul([].translate(p.sub(level.center_of_mass()))))
+        .draw_tris();
+    }
+
+    for (var team_name in {red: true, blue: true})
     {
         let team = state.rx_state[team_name];
         for (var id in team.players)
