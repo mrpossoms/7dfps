@@ -378,7 +378,7 @@ let projectile_batch = {
 						var crouch_scale = player.unit.crouching() ? 0.5 : 1;
 						for (var k = 0; k < 2; k++)
 						{
-							let t = Math.ray({position: p.pos, direction: vel_dt}).intersects.sphere(player.unit.position().add([0, k * 10 * crouch_scale, 0]), 5);
+							let t = Math.ray({position: p.pos, direction: vel_dt}).intersects.sphere(player.unit.position().add([0, k * 5 * crouch_scale, 0]), 5);
 
 							if (t > 0 && t < 1)
 							{
