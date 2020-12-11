@@ -37,6 +37,8 @@ var walk_sounds = [];
 var servo_sounds = [];
 var step_cool = 0;
 
+var text = {};
+
 g.web.canvas(document.getElementById('primary'));
 
 function grid(color_mapping, nav_cell_idx, voxel)
@@ -166,6 +168,9 @@ g.initialize(function ()
 
         gl.lineWidth(5);
     });
+
+    text.health = g.web.gfx.text.create(128, 32, "32px Arial");
+    text.ammo = g.web.gfx.text.create(128, 32, "32px Arial");
 
     light.orthographic();
 
@@ -357,8 +362,6 @@ g.update(function (dt)
 
 var t = 0;
 
-
-
 const draw_scene = (camera, shader) => {
 
     const ambient_light = [255/255, 106/255, 135/255].mul(0.6);
@@ -524,6 +527,37 @@ const draw_scene = (camera, shader) => {
         .with_attribute({name:'a_tex_coord', buffer:'texture_coords', components: 2})
         .with_aspect_correct_2d(g.web.assets[ret_map[me.type]], [].scale(0.5))
         .draw_tri_fan();
+
+        const aspect = g.web.gfx.aspect();
+
+        { // draw health
+            g.web.assets['mesh/plane'].using_shader('basic_textured')
+            .with_attribute({name:'a_position', buffer:'positions', components: 3})
+            .with_attribute({name:'a_tex_coord', buffer:'texture_coords', components: 2})
+            .with_aspect_correct_2d(g.web.assets['tex/health'], [].scale(0.5).mat_mul([].translate([0.1 / aspect, -0.8, 0])))
+            .draw_tri_fan();
+
+            g.web.assets['mesh/plane'].using_shader('basic_textured')
+            .with_attribute({name:'a_position', buffer:'positions', components: 3})
+            .with_attribute({name:'a_tex_coord', buffer:'texture_coords', components: 2})
+            .with_aspect_correct_2d(text.health.text(Math.floor(me.hp), '#00FFFFFF'), [].scale(0.5).mat_mul([].translate([0.3 / aspect, -0.8, 0])))
+            .draw_tri_fan();
+        }
+
+        { // draw ammo
+            g.web.assets['mesh/plane'].using_shader('basic_textured')
+            .with_attribute({name:'a_position', buffer:'positions', components: 3})
+            .with_attribute({name:'a_tex_coord', buffer:'texture_coords', components: 2})
+            .with_aspect_correct_2d(g.web.assets['tex/ammo'], [].scale(0.5).mat_mul([].translate([-0.1 / aspect, -0.8, 0])))
+            .draw_tri_fan();
+
+            g.web.assets['mesh/plane'].using_shader('basic_textured')
+            .with_attribute({name:'a_position', buffer:'positions', components: 3})
+            .with_attribute({name:'a_tex_coord', buffer:'texture_coords', components: 2})
+            .with_aspect_correct_2d(text.ammo.text(Math.floor(state.rx_state.my_ammo), '#00FFFFFF'), [].scale(0.5).mat_mul([].translate([-0.15 / aspect, -0.8, 0])))
+            .draw_tri_fan();
+        }
+
         gl.enable(gl.DEPTH_TEST);
     }
 };
