@@ -141,6 +141,8 @@ function active_player(state, players_map)
 	if (living_blue.length > 0) { teams.push(living_blue); }
 	if (living_red.length > 0) { teams.push(living_red); }
 
+	if (teams.length == 0) { return null; }
+
 	let team_living = teams[state.turn % teams.length];
 	let idx = Math.floor(state.turn / teams.length) % team_living.length;		
 
@@ -185,6 +187,7 @@ let unit = {
 		var hp = unit_stats.hp;
 		var ammo = unit_stats.weapon.capacity;
 		var action_points = game_vars.player.action_points;
+		var crouching = false;
 		cam.friction = 5;
 		cam.forces.push([0, -9, 0]);
 
@@ -229,12 +232,17 @@ let unit = {
 			},
 			ammo: function (a)
 			{
-				if (a) { ammo = a; }
+				if (undefined != a) { ammo = a; }
 
 				return ammo;
 			},
+			crouching: function(c) { if (c != undefined) { crouching = c; } return crouching;},
+			reload: function()
+			{
+				ammo = unit_stats.weapon.capacity;
+			},
 			position: function(pos) { return cam.position(pos); },
-			eyes: function() { return cam.position().add([0, 12, 0]); },
+			eyes: function() { return cam.position().add([0, 12 * (crouching ? (25/39) : 1), 0]); },
 			velocity: function(vel) { return cam.velocity(vel); },
 			action_points: function(pts)
 			{
@@ -273,7 +281,7 @@ let team = {
 			living_players: function(players_map)
 			{
 				return players.reduce((acc, val) => {
-					if (players_map[val].unit.hp() > 0)
+					if (players_map[val] && players_map[val].unit.hp() > 0)
 					{
 						return acc.concat(val);
 					}
@@ -363,9 +371,10 @@ let projectile_batch = {
 						let player = players[id];
 
 						var collided = false;
+						var crouch_scale = player.unit.crouching() ? 0.5 : 1;
 						for (var k = 0; k < 2; k++)
 						{
-							let t = Math.ray({position: p.pos, direction: vel_dt}).intersects.sphere(player.unit.position().add([0, k * 10, 0]), 5);
+							let t = Math.ray({position: p.pos, direction: vel_dt}).intersects.sphere(player.unit.position().add([0, k * 10 * crouch_scale, 0]), 5);
 
 							if (t > 0 && t < 1)
 							{

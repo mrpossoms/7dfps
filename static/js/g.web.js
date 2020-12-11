@@ -924,10 +924,10 @@ g.web = {
 
 								var tex = g.web.gfx.texture.create(img).color().smooth().repeating();
 
-								if (processors.indexOf('pixelated') >= 0) { chain = chain.pixelated(); }
-								if (processors.indexOf('smooth') >= 0) { chain = chain.smooth(); }
-								if (processors.indexOf('repeating') >= 0) { chain = chain.repeating(); }
-								if (processors.indexOf('clamped') >= 0) { chain = chain.clamped(); }
+								if (processors.indexOf('pixelated') >= 0) { tex = tex.pixelated(); }
+								if (processors.indexOf('smooth') >= 0) { tex = tex.smooth(); }
+								if (processors.indexOf('repeating') >= 0) { tex = tex.repeating(); }
+								if (processors.indexOf('clamped') >= 0) { tex = tex.clamped(); }
 								g.web.assets[tex_name] = tex;
 							};
 						} break;

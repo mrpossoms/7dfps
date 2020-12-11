@@ -140,7 +140,7 @@ module.exports.server = {
 
 				player.shooting = true;
 				player.time_shooting = 0;
-				console.log('player ' + player.id +' starts shooting');
+				console.log('player ' + player.id +' starts shooting with ' + player.unit.ammo() + ' rounds');
 			});
 
 			player.on('trigger_up', () => {
@@ -149,6 +149,10 @@ module.exports.server = {
 				player.shooting = false;
 				player.shot_cooldown = 0;
 				console.log('player ' + player.id +' stops shooting');
+			});
+
+			player.on('crouch', (crouch) => {
+				player.unit.crouching(crouch);
 			});
 
 			player.on('angles', (pitch_yaw) => {
@@ -244,7 +248,7 @@ module.exports.server = {
 			{
 				// console.log('unit: ' + player.unit.type());
 				// console.log('rps: ' + vars.units[player.unit.type()].weapon.rounds_sec);
-				if (player.shot_cooldown <= 0)
+				if (player.shot_cooldown <= 0 && player.unit.ammo() > 0)
 				{
 					let unit = player.unit.type();
 					let unit_vars = vars.units[unit];
@@ -258,6 +262,7 @@ module.exports.server = {
 					{
 						let yaw_sp = [].quat_rotation([0, 1, 0], Math.random.uni() * (sb_yaw + proj_stats.spread_yaw_deg_sec * player.time_shooting));
 						let pitch_sp = [].quat_rotation([1, 0, 0], Math.random.uni() * (sb_pitch + proj_stats.spread_pitch_deg_sec * player.time_shooting));
+
 						let sp_q = pitch_sp.quat_mul(yaw_sp);
 						state.projectiles.spawn(
 							player.unit.eyes(), // position
@@ -266,9 +271,10 @@ module.exports.server = {
 							player.id // owner
 						);
 						player.shot_cooldown = 1.0 / unit_vars.weapon.rounds_sec;
-
 						player.time_shooting += dt;
 					}
+
+					player.unit.ammo(player.unit.ammo() - 1);
 				}
 			}
 
@@ -317,23 +323,28 @@ module.exports.server = {
 	{
 		state.projectiles.update(state.world, players, dt);
 
-		if (state.teams['red'].players.length * state.teams['blue'].players.length == 0) { return; }
+		if (state.teams['red'].players.length + state.teams['blue'].players.length == 0) { return; }
 		// console.log('projectiles: ' + state.projectiles.active().length);
 
 		{ // Handle turn expiration here
 			if (state.last_turn != state.turn)
 			{
-				let next_player = players[_7d.active_player(state, players)];
-				next_player.emit('your_turn');
+				let active_player = _7d.active_player(state, players);
+				if (null != active_player)
+				{
+					let next_player = players[active_player];
+					next_player.unit.reload();
+					next_player.emit('your_turn');
 
-				next_player.nav = _7d.nav.choices(
-					state.nav_grid,
-					next_player.unit.position().add([0, 1, 0]),
-					next_player.unit.action_points()
-				);
-				next_player.emit('nav', next_player.nav);
+					next_player.nav = _7d.nav.choices(
+						state.nav_grid,
+						next_player.unit.position().add([0, 1, 0]),
+						next_player.unit.action_points()
+					);
+					next_player.emit('nav', next_player.nav);
 
-				state.turn_time = vars.player.turn_sec;
+					state.turn_time = vars.player.turn_sec;
+				}
 			}
 
 			state.last_turn = state.turn;
@@ -341,9 +352,25 @@ module.exports.server = {
 			if (state.turn_time <= 0)
 			{
 				let active_player = _7d.active_player(state, players);
-				console.log('active ' + active_player + ' hp: ' + players[active_player].unit.hp());
-				players[active_player].emit('nav', {choices: [], path: null});
-				state.turn += 1; 
+
+				if (null != active_player)
+				{
+					console.log('active ' + active_player + ' hp: ' + players[active_player].unit.hp());
+					players[active_player].emit('nav', {choices: [], path: null});
+					state.turn += 1; 
+				}
+			}
+		}
+
+		// if (state.teams['red'].players.length + state.teams['blue'].players.length > 0)
+		{ // Look for game over condition
+			if (state.teams.red.living_players(players).length == 0 && state.teams.red.players.length > 0)
+			{
+				console.log('Blue team wins');
+			}
+			if (state.teams.blue.living_players(players).length == 0 && state.teams.blue.players.length > 0)
+			{
+				console.log('Red team wins');
 			}
 		}
 	},
@@ -368,13 +395,15 @@ module.exports.server = {
 
 			for (var i = 0; i < team.players.length; i++)
 			{
+				if (!players[team.players[i]]) { continue; }
 				let unit = players[team.players[i]].unit;
 				tx_state[team_name].players[team.players[i]] = {
 					type: unit.type(),
 					pos: unit.position(),
 					vel: unit.velocity(),
 					angs: unit.angles(),
-					hp: unit.hp()
+					hp: unit.hp(),
+					crouch: unit.crouching()
 				};
 			}
 		}
@@ -385,6 +414,7 @@ module.exports.server = {
 			if (!player.emit) { continue; }
 			tx_state.my_id = id;
 			tx_state.my_team = player.team;
+			tx_state.my_ammo = player.unit.ammo();
 			player.emit('state', tx_state);
 		}
 	}

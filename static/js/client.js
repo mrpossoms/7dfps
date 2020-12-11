@@ -26,6 +26,7 @@ state.me.cam.position([0, 20, 0]);
 // cam.forces.push([0, -9, 0]);
 state.me.cam.mass = 0.1;
 state.me.cam.force = 1000;
+state.me.crouching = false;
 // cam.friction = 5;
 
 var shadow_map = null;
@@ -33,6 +34,7 @@ var text_demo = null;
 var light = g.camera.create();
 var walk_action = [0, 0];
 var walk_sounds = [];
+var servo_sounds = [];
 var step_cool = 0;
 
 g.web.canvas(document.getElementById('primary'));
@@ -131,9 +133,16 @@ g.initialize(function ()
             g.web.assets['shaders/nav_point.frag']
         );
 
+        g.web.assets['mesh/plane'] = g.web.gfx.mesh.plane();
+
         for (var i = 0; i < 5; i++)
         {
             walk_sounds.push(new g.web.assets['sound/step' + i]([0, 0, 0]));
+        }
+
+        for (var i = 0; i < 2; i++)
+        {
+            servo_sounds.push(new g.web.assets['sound/servo' + i]([0, 0, 0]));
         }
 
         shadow_map = g.web.gfx.render_target.create({width: 1024, height: 1024}).shadow_map();
@@ -237,7 +246,7 @@ g.web.on('state').do((s) => {
 
     }
 
-    if (s.my_id != state.me.id)
+    if (s.my_id != state.me.id || state.me.team != s.my_team)
     {
         state.me.team = s.my_team;
         state.me.id = s.my_id;
@@ -283,19 +292,14 @@ g.update(function (dt)
                     g.web.signal('do_move');
                 }
 
+                let crouching = g.web.key.is_pressed('control');
+                if (crouching != state.me.crouching)
+                {
+                    state.me.crouching = crouching;
+                    g.web.signal('crouch', state.me.crouching);
+                }
             } break;
         }
-    }
-
-    if (state.me.team != "spectator")
-    {
-        let me = state.rx_state[state.me.team].players[state.me.id];
-        // let rot_scale = [].quat_rotation([0, 1, 0], me.angs[0]);
-        // rot_scale = rot_scale.quat_mul([].quat_rotation([1, 0, 0], me.angs[1]));
-        let offset = [].quat_rotation([1, 0, 0], me.angs[1]).quat_rotate_vector([0, 3, 1]);
-        offset = [].quat_rotation([0, 1, 0], me.angs[0]).quat_rotate_vector(offset);
-        state.me.cam.position(me.pos.add([0, 9, 0].add(offset)).sub(level.center_of_mass()));
-        // state.me.cam.velocity(me.vel);        
     }
 
     for (var team_name in state.rx_state)
@@ -304,7 +308,7 @@ g.update(function (dt)
         for (var id in team.players)
         {
             let player = team.players[id]; 
-            player.pos = player.pos.add(player.vel.mul(dt));
+            // player.pos = player.pos.add(player.vel.mul(dt));
 
             if (player.vel.dot(player.vel) > 0.001)
             {
@@ -314,6 +318,7 @@ g.update(function (dt)
                 if (step_cool <= 0)
                 {
                     walk_sounds.pick().position(player.pos.sub(level.center_of_mass())).play();
+                    servo_sounds.pick().position(player.pos.sub(level.center_of_mass())).play();
                     step_cool = 0.333;
                 }
             }
@@ -324,6 +329,18 @@ g.update(function (dt)
 
             state.player_anims[id].tick(dt);
         }
+    }
+
+    if (state.me.team != "spectator")
+    {
+        let me = state.rx_state[state.me.team].players[state.me.id];
+        let crouch_scale = me.crouch ? (25/39) : 1;
+        // let rot_scale = [].quat_rotation([0, 1, 0], me.angs[0]);
+        // rot_scale = rot_scale.quat_mul([].quat_rotation([1, 0, 0], me.angs[1]));
+        let offset = [].quat_rotation([1, 0, 0], me.angs[1]).quat_rotate_vector([0, 3, 1]);
+        offset = [].quat_rotation([0, 1, 0], me.angs[0]).quat_rotate_vector(offset);
+        state.me.cam.position(me.pos.add([0, 9 * crouch_scale, 0].add(offset)).sub(level.center_of_mass()));
+        state.me.cam.velocity(me.vel);        
     }
 
     for (var i = 0; i < state.rx_state.projectiles.length; i++)
@@ -396,20 +413,6 @@ const draw_scene = (camera, shader) => {
         .draw_line_strip();
     }
 
-    // if (state.me.selected)
-    // {
-    //     gl.disable(gl.DEPTH_TEST);
-    //     if (state.me.selected.point)
-    //     g.web.assets['mesh/nav_point'].using_shader('nav_point')
-    //     .with_attribute({name:'a_position', buffer:'positions', components: 3})
-    //     .with_camera(camera)
-    //     .set_uniform('u_model').mat4([].translate(state.me.selected.point.add([0, 0, 0]).sub(level.center_of_mass())))
-    //     .set_uniform('u_color').vec4([0, 1, 0, 1])
-    //     .draw_points();
-
-    //     gl.enable(gl.DEPTH_TEST);
-    // }
-
     for (var i = 0; i < state.rx_state.projectiles.length; i++)
     {
         let p = state.rx_state.projectiles[i];
@@ -428,19 +431,34 @@ const draw_scene = (camera, shader) => {
         {
 
             const p = team.players[id];
+            const crouch_scale = p.crouch ? (25/39) : 1;
             let angs = p.angs;
 
             if (id == state.me.id && state.me.team != "spectator")
             {
-                angs[0] = state.me.cam.yaw();
-                angs[1] = state.me.cam.pitch();
+                // angs[0] = state.me.cam.yaw();
+                // angs[1] = state.me.cam.pitch();
             }
 
             let rot_scale = [].quat_rotation([0, 1, 0], 3.1415-angs[0]).quat_to_matrix().mat_mul([].scale(0.20));
             
             { // draw legs
-                const model = rot_scale.mat_mul([].translate(p.pos.add([0, 4, 0]).sub(level.center_of_mass())));
-                const asset = state.player_anims[id].current_frame().asset;
+                const model = rot_scale.mat_mul([].translate(p.pos.add([0, 4 * crouch_scale, 0]).sub(level.center_of_mass())));
+                let asset = null;
+
+                if (p.hp > 0)
+                {
+                    asset = state.player_anims[id].current_frame().asset;
+                    
+                    if (p.crouch)
+                    {
+                        asset = 'voxel/' + p.type + '/legs/crouch';
+                    }
+                }
+                else
+                {
+                    asset = 'voxel/' + p.type + '/legs/destroyed';
+                }
 
                 g.web.assets[asset].using_shader(shader || 'basic_colored')
                 .with_attribute({name:'a_position', buffer: 'positions', components: 3})
@@ -457,9 +475,18 @@ const draw_scene = (camera, shader) => {
             }
 
             { // draw head
+                if (p.hp > 0)
+                {
+                    asset = 'voxel/' + p.type + '/head/0';
+                }
+                else
+                {
+                    asset = 'voxel/' + p.type + '/head/destroyed';
+                }
+
                 rot_scale = [].quat_rotation([1, 0, 0], angs[1]).quat_to_matrix().mat_mul(rot_scale);
-                const model = rot_scale.mat_mul([].translate(p.pos.add([0, 9, 0]).sub(level.center_of_mass())));
-                g.web.assets['voxel/' + p.type + '/head/0'].using_shader(shader || 'basic_colored')
+                const model = rot_scale.mat_mul([].translate(p.pos.add([0, 9 * crouch_scale, 0]).sub(level.center_of_mass())));
+                g.web.assets[asset].using_shader(shader || 'basic_colored')
                 .with_attribute({name:'a_position', buffer: 'positions', components: 3})
                 .with_attribute({name:'a_normal', buffer: 'normals', components: 3})
                 .with_attribute({name:'a_color', buffer: 'colors', components: 3})
@@ -474,8 +501,26 @@ const draw_scene = (camera, shader) => {
             }
 
         }
-        // if ('depth_only' != shader)
-        // if (id == state.me.id) { continue; }
+    }
+
+    if (state.me.team != 'spectator')
+    {
+        const ret_map = {
+            'assault': 'tex/ret_assault',
+            'shotgun': 'tex/ret_shotgun',
+            'sniper': 'tex/ret_sniper'
+        };
+
+        let me = state.rx_state[state.me.team].players[state.me.id];
+
+        // gl.enable(gl.BLEND);
+        gl.disable(gl.DEPTH_TEST);
+        g.web.assets['mesh/plane'].using_shader('basic_textured')
+        .with_attribute({name:'a_position', buffer:'positions', components: 3})
+        .with_attribute({name:'a_tex_coord', buffer:'texture_coords', components: 2})
+        .with_aspect_correct_2d(g.web.assets[ret_map[me.type]], [].scale(0.5))
+        .draw_tri_fan();
+        gl.enable(gl.DEPTH_TEST);
     }
 };
 
