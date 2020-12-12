@@ -19,6 +19,7 @@ module.exports.server = {
 		last_turn: 0,
 		turn_time: 0,
 		game_state: "normal",
+		message: null,
 		reset_timer: 0,
 		round: 1
 	},
@@ -365,13 +366,13 @@ module.exports.server = {
 			{ // Look for game over condition
 				if (state.teams.red.living_players(players).length == 0 && state.teams.red.players.length > 0)
 				{
-					console.log('Blue team wins');
+					console.log(state.message = 'Blue team wins');
 					state.game_state = "finished";
 					state.reset_timer = 5;
 				}
 				if (state.teams.blue.living_players(players).length == 0 && state.teams.blue.players.length > 0)
 				{
-					console.log('Red team wins');
+					console.log(state.message = 'Red team wins');
 					state.game_state = "finished";
 					state.reset_timer = 5;
 				}
@@ -385,6 +386,7 @@ module.exports.server = {
 				state.teams.blue.reset(players);
 				state.game_state = 'normal';
 				state.round += 1;
+				state.message = null;
 			}
 			break;
 		}
@@ -432,6 +434,7 @@ module.exports.server = {
 			tx_state.my_team = player.team;
 			tx_state.my_ammo = player.unit.ammo();
 			tx_state.turn = _7d.active_player(state, players);
+			tx_state.message = state.message;
 			player.emit('state', tx_state);
 		}
 	}

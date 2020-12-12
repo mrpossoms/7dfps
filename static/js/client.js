@@ -41,51 +41,6 @@ var text = {};
 
 g.web.canvas(document.getElementById('primary'));
 
-function grid(color_mapping, nav_cell_idx, voxel)
-{
-    // find a spawn point to start at
-    var spawn_point = [0, 0, 0];
-    var spawn_color_red = color_mapping.spawn_point_red.mul(1/255);
-    var spawn_color_blue = color_mapping.spawn_point_blue.mul(1/255);
-    voxel.each_voxel((x, y, z) => {
-        const color = voxel.palette[voxel.cells[x][y][z]];
-        if (spawn_color_red.eq(color) || spawn_color_blue.eq(color))
-        {
-            spawn_point = [x, y, z];
-            return true; // marks that we are done
-        }
-    });
-
-    var nav_grid = voxel.downsample(10);
-
-    console.log(nav_grid);
-
-    let flood_fill = (x, y, z) => {
-        if (x < 0 || x >= nav_grid.width) { return; }
-        if (y < 0 || y >= nav_grid.height) { return; }
-        if (z < 0 || z >= nav_grid.depth) { return; }
-        var below = 0;
-        if (y - 1 >= 0) below = nav_grid.cells[x][y - 1][z];
-        if (nav_grid.cells[x][y][z] != 0 || below == nav_cell_idx || below == 0)
-        { return; }
-
-        nav_grid.cells[x][y][z] = nav_cell_idx;
-
-        flood_fill(x - 1, y, z);
-        flood_fill(x - 1, y + 1, z);
-        flood_fill(x + 1, y, z);
-        flood_fill(x + 1, y + 1, z);
-        flood_fill(x, y, z + 1);
-        flood_fill(x, y + 1, z + 1);
-        flood_fill(x, y, z - 1);
-        flood_fill(x, y + 1, z - 1);
-    };
-
-    spawn_point = spawn_point.mul(1/10).floor();
-    flood_fill(spawn_point[0], spawn_point[1], spawn_point[2]);
-
-    return nav_grid;
-}
 
 g.initialize(function ()
 {
@@ -157,14 +112,6 @@ g.initialize(function ()
 
         g.is_running = true;
 
-        // const nav = grid({
-        //     "spawn_point_red": [255, 0, 0],
-        //     "spawn_point_blue": [0, 0, 255]
-        // },
-        // 72,
-        // g.web.assets[level_str]);
-        // g.web.assets[level_str] = g.web.gfx.voxel.create(nav);
-
         g.web.assets['mesh/nav_point'] = g.web.gfx.mesh.create({
             positions: [[0, 0, 0]]
         });
@@ -177,6 +124,7 @@ g.initialize(function ()
 
     text.health = g.web.gfx.text.create(128, 32, "32px Arial");
     text.ammo = g.web.gfx.text.create(128, 32, "32px Arial");
+    text.message = g.web.gfx.text.create(256, 32, "32px Arial");
 
     light.orthographic();
 
@@ -203,17 +151,6 @@ g.web.pointer.on_release(function (event) {
     g.web.signal('trigger_up');
 });
 
-
-// g.web.on('id').do((id) => {
-//     my_id = id;
-//     console.log('you are player ' + id);
-// });
-
-// g.web.on('team').do((type_str) => {
-//     state.me.team = type_str;
-//     my_team = type_str;
-//     console.log('you have joined ' + type_str);
-// });
 
 g.web.on('nav').do((nav) => {
     state.me.nav = nav;
@@ -384,6 +321,7 @@ const draw_scene = (camera, shader) => {
         .set_uniform('u_light_proj').mat4(light.projection())
         .set_uniform('u_light_diffuse').vec3([0.9, 0.7, 0.5])
         .set_uniform('u_light_ambient').vec3(ambient_light)
+        .set_uniform('u_hue').vec3([1, 1, 1])
         .draw_tris();
 
     let level = g.web.assets[level_str];
@@ -400,11 +338,6 @@ const draw_scene = (camera, shader) => {
         .set_uniform('u_light_ambient').vec3(ambient_light)
         .draw_tris();
 
-    // g.web.assets[level_str].using_shader('depth_only')
-    //     .with_attribute({name:'a_position', buffer: 'positions', components: 3})
-    //     .with_camera(camera)
-    //     .set_uniform('u_model').mat4([].I(4))
-    //     .draw_lines();
 
     if (state.me.nav)
     {
@@ -453,7 +386,8 @@ const draw_scene = (camera, shader) => {
         .draw_tris();
     }
 
-    for (var team_name in {red: true, blue: true})
+    const team_hues = {red: [1, 0.5, 0.5], blue: [0.5, 0.5, 1]};
+    for (var team_name in team_hues)
     {
         let team = state.rx_state[team_name];
         for (var id in team.players)
@@ -500,6 +434,7 @@ const draw_scene = (camera, shader) => {
                 .set_uniform('u_light_proj').mat4(light.projection())
                 .set_uniform('u_light_diffuse').vec3([1, 1, 1])
                 .set_uniform('u_light_ambient').vec3(ambient_light)
+                .set_uniform('u_hue').vec3(team_hues[team_name])
                 .draw_tris();                
             }
 
@@ -532,6 +467,25 @@ const draw_scene = (camera, shader) => {
         }
     }
 
+    gl.disable(gl.DEPTH_TEST);
+    const aspect = g.web.gfx.aspect();
+    { // draw message
+        let msg = state.rx_state.message;
+        if (state.rx_state.turn == state.me.id && null == msg)
+        {
+            msg = 'YOUR TURN';
+        }
+
+        if (msg)
+        {
+            g.web.assets['mesh/plane'].using_shader('basic_textured')
+            .with_attribute({name:'a_position', buffer:'positions', components: 3})
+            .with_attribute({name:'a_tex_coord', buffer:'texture_coords', components: 2})
+            .with_aspect_correct_2d(text.message.text(msg, '#00FFFFFF'), [].scale(0.75).mat_mul([].translate([0 / aspect, 0.8, 0])))
+            .draw_tri_fan();
+        }
+    }
+
     if (state.me.team != 'spectator')
     {
         const ret_map = {
@@ -542,14 +496,11 @@ const draw_scene = (camera, shader) => {
 
         let me = state.rx_state[state.me.team].players[state.me.id];
 
-        gl.disable(gl.DEPTH_TEST);
         g.web.assets['mesh/plane'].using_shader('basic_textured')
         .with_attribute({name:'a_position', buffer:'positions', components: 3})
         .with_attribute({name:'a_tex_coord', buffer:'texture_coords', components: 2})
         .with_aspect_correct_2d(g.web.assets[ret_map[me.type]], [].scale(0.5))
         .draw_tri_fan();
-
-        const aspect = g.web.gfx.aspect();
 
         { // draw health
             g.web.assets['mesh/plane'].using_shader('basic_textured')
@@ -578,9 +529,9 @@ const draw_scene = (camera, shader) => {
             .with_aspect_correct_2d(text.ammo.text(Math.floor(state.rx_state.my_ammo), '#00FFFFFF'), [].scale(0.5).mat_mul([].translate([-0.15 / aspect, -0.8, 0])))
             .draw_tri_fan();
         }
-
-        gl.enable(gl.DEPTH_TEST);
     }
+
+    gl.enable(gl.DEPTH_TEST);
 };
 
 g.web.draw(function (dt)

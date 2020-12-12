@@ -12,7 +12,7 @@
 	  ]
    },
 	"player": {
-		"action_points": 5,
+		"action_points": 7,
       "turn_sec": 10
 	},
    "units":{
@@ -33,7 +33,7 @@
 			"projectile":{
 			   "count":1,
 			   "mass":0.1,
-			   "velocity_unit_sec":500,
+			   "velocity_unit_sec":600,
 			   "spread_yaw_base":0,
 			   "spread_pitch_base":0,
 			   "spread_yaw_deg_sec":0,

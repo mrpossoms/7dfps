@@ -2,6 +2,8 @@ varying lowp vec3 v_color;
 varying lowp vec3 v_normal;
 varying highp vec4 v_light_proj_pos;
 
+uniform lowp vec3 u_hue;
+
 uniform lowp vec3 u_light_diffuse;
 uniform lowp vec3 u_light_ambient;
 uniform sampler2D u_shadow_map;
@@ -46,8 +48,8 @@ void main (void)
 	lowp float shading = ndl * shadowing;//min(ndl, shadowing);
 	// shadowing = max(0.4, shadowing);
 
-	lowp vec3 c_diff = v_color * u_light_diffuse * shading;
-	lowp vec3 c_ambi = v_color * u_light_ambient;
+	lowp vec3 c_diff = (v_color * u_hue) * u_light_diffuse * shading;
+	lowp vec3 c_ambi = (v_color * u_hue) * u_light_ambient;
 
 	gl_FragColor = vec4((c_ambi + c_diff), 1.0);
 
