@@ -144,7 +144,7 @@ function active_player(state, players_map)
 	if (teams.length == 0) { return null; }
 
 	let team_living = teams[state.turn % teams.length];
-	let idx = Math.floor(state.turn / teams.length) % team_living.length;		
+	let idx = Math.floor(state.turn / teams.length) % team_living.length;
 
 	return team_living[idx];
 }
@@ -299,7 +299,7 @@ let team = {
 				for (var i = 0; i < players.length; i++)
 				{
 					let p = players_map[players[i]];
-					spawn_player(p);		
+					spawn_player(p);
 				}
 			}
 		};
@@ -356,7 +356,7 @@ let projectile_batch = {
 				{
 					let p = projectiles[i];
 					let vel_dt = p.vel.mul(dt);
-				
+
 					for (var j = 0; j < accelerations.length; j++)
 					{
 						p.vel = p.vel.add(accelerations[j].mul(dt));
@@ -377,7 +377,11 @@ let projectile_batch = {
 					for (var id in players)
 					{
 						if (p.owner == id) { continue; } // don't collide with owner
+
+						let owner = players[p.owner];
 						let player = players[id];
+
+						if (owner.team == player.team) { continue; } // don't collide with the same team
 
 						var collided = false;
 						var crouch_scale = player.unit.crouching() ? 0.5 : 1;
@@ -390,7 +394,7 @@ let projectile_batch = {
 								collided = true;
 								impacts.push(p.pos.add(vel_dt.mul(t)));
 								break;
-							}	
+							}
 						}
 
 						// TODO: do damage to player
