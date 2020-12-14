@@ -135,7 +135,7 @@ g.initialize(function ()
 g.web.pointer.on_move(function (event)
 {
     let cam = state.me.cam;
-    cam.tilt(event.movementY / 200, event.movementX / 200); 
+    cam.tilt(event.movementY / 200, event.movementX / 200);
 
     g.web.signal('angles', [cam.pitch(), cam.yaw()]);
 });
@@ -185,7 +185,7 @@ g.web.on('state').do((s) => {
                         frameTags: [
                             { name: "walk", from: 0, to: 1, direction: "forward" },
                         ]
-                    } 
+                    }
                 }))();
 
                 state.player_anims[pid].set('walk');
@@ -258,7 +258,7 @@ g.update(function (dt)
         let team = state.rx_state[team_name];
         for (var id in team.players)
         {
-            let player = team.players[id]; 
+            let player = team.players[id];
             // player.pos = player.pos.add(player.vel.mul(dt));
 
             if (player.vel.dot(player.vel) > 0.001)
@@ -291,7 +291,7 @@ g.update(function (dt)
         let offset = [].quat_rotation([1, 0, 0], me.angs[1]).quat_rotate_vector([0, 3, 1]);
         offset = [].quat_rotation([0, 1, 0], me.angs[0]).quat_rotate_vector(offset);
         state.me.cam.position(me.pos.add([0, 9 * crouch_scale, 0].add(offset)).sub(level.center_of_mass()));
-        state.me.cam.velocity(me.vel);        
+        state.me.cam.velocity(me.vel);
     }
 
     for (var i = 0; i < state.rx_state.projectiles.length; i++)
@@ -386,7 +386,7 @@ const draw_scene = (camera, shader) => {
         .draw_tris();
     }
 
-    const team_hues = {red: [1, 0.5, 0.5], blue: [0.5, 0.5, 1]};
+    const team_hues = {red: [1, 0.4, 0.4], blue: [0.4, 0.4, 1]};
     for (var team_name in team_hues)
     {
         let team = state.rx_state[team_name];
@@ -404,7 +404,7 @@ const draw_scene = (camera, shader) => {
             }
 
             let rot_scale = [].quat_rotation([0, 1, 0], 3.1415-angs[0]).quat_to_matrix().mat_mul([].scale(0.20));
-            
+
             { // draw legs
                 const model = rot_scale.mat_mul([].translate(p.pos.add([0, 4 * crouch_scale, 0]).sub(level.center_of_mass())));
                 let asset = null;
@@ -412,7 +412,7 @@ const draw_scene = (camera, shader) => {
                 if (p.hp > 0)
                 {
                     asset = state.player_anims[id].current_frame().asset;
-                    
+
                     if (p.crouch)
                     {
                         asset = 'voxel/' + p.type + '/legs/crouch';
@@ -435,7 +435,7 @@ const draw_scene = (camera, shader) => {
                 .set_uniform('u_light_diffuse').vec3([1, 1, 1])
                 .set_uniform('u_light_ambient').vec3(ambient_light)
                 .set_uniform('u_hue').vec3(team_hues[team_name])
-                .draw_tris();                
+                .draw_tris();
             }
 
             { // draw head
