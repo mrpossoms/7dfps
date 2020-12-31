@@ -27,7 +27,7 @@ const g = {
 
 	canvas: function(dom_element) { g._canvas = dom_element; return this; },
 
-	start: function()
+	start: function(opts)
 	{
 		var req_frame = window.requestAnimationFrame       ||
 		                window.webkitRequestAnimationFrame ||
@@ -61,6 +61,8 @@ const g = {
 		}
 
 		// update, and render if appropriate
+		var frames = 0;
+		var time_since_sec = 0;
 		var update = function() {
 			var dt = step_timer.tick();
 
@@ -75,6 +77,18 @@ const g = {
 			}
 
 			if (g.web) { req_frame(update); }
+
+			if (opts.print_fps)
+			{
+				if (time_since_sec >= 1)
+				{
+					console.log(frames + ' fps');
+					frames = 0;
+					time_since_sec = 0;
+				}
+				time_since_sec += dt;
+				frames++;
+			}
 		};
 
 		if (g.web) { req_frame(update); }

@@ -136,7 +136,6 @@ g.web.pointer.on_move(function (event)
 {
     let cam = state.me.cam;
     cam.tilt(event.movementY / 200, event.movementX / 200);
-
     g.web.signal('angles', [cam.pitch(), cam.yaw()]);
 });
 
@@ -161,6 +160,7 @@ g.web.on('nav').do((nav) => {
     }
 });
 
+let once = false;
 g.web.on('state').do((s) => {
     let level = g.web.assets[level_str];
 
@@ -212,10 +212,13 @@ g.web.on('your_turn').do(() => {
 });
 
 
+var t = 0;
 g.update(function (dt)
 {
     var vec = [0, 0];
     let level = g.web.assets[level_str];
+
+    t += dt;
 
     if (state.me.team == 'spectator')
     {
@@ -288,8 +291,8 @@ g.update(function (dt)
         let crouch_scale = me.crouch ? (25/39) : 1;
         // let rot_scale = [].quat_rotation([0, 1, 0], me.angs[0]);
         // rot_scale = rot_scale.quat_mul([].quat_rotation([1, 0, 0], me.angs[1]));
-        let offset = [].quat_rotation([1, 0, 0], me.angs[1]).quat_rotate_vector([0, 3, 1]);
-        offset = [].quat_rotation([0, 1, 0], me.angs[0]).quat_rotate_vector(offset);
+        let offset = [].quat_rotation([1, 0, 0], state.me.cam.pitch()).quat_rotate_vector([0, 3, 1]);
+        offset = [].quat_rotation([0, 1, 0], state.me.cam.yaw()).quat_rotate_vector(offset);
         state.me.cam.position(me.pos.add([0, 9 * crouch_scale, 0].add(offset)).sub(level.center_of_mass()));
         state.me.cam.velocity(me.vel);
     }
@@ -303,12 +306,12 @@ g.update(function (dt)
     step_cool -= dt;
 });
 
-var t = 0;
 
 const draw_scene = (camera, shader) => {
 
     const ambient_light = [255/255, 106/255, 135/255].mul(0.6);
 
+    if (!shader)
     g.web.assets['voxel/skybox']
         .using_shader(shader || 'basic_colored')
         .with_attribute({name:'a_position', buffer: 'positions', components: 3})
@@ -536,7 +539,6 @@ const draw_scene = (camera, shader) => {
 
 g.web.draw(function (dt)
 {
-    t += dt;
     if (g.is_running == false) { return; }
 
     light.look_at([80, 140, -40], [0, 0, 0], [0, 1, 0]);
@@ -544,6 +546,7 @@ g.web.draw(function (dt)
     gl.clear(gl.DEPTH_BUFFER_BIT);
     draw_scene(light.orthographic(180, 180), 'depth_only');
     shadow_map.unbind_as_target();
+
 
     gl.clearColor(140/255, 49/255, 26/255, 0);
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
